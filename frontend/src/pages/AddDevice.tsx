@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Camera, ImageUp, Keyboard, CheckCircle } from 'lucide-react'
+import { Html5Qrcode } from 'html5-qrcode'
+import Scanner from '../components/Scanner'
 import { createDevice, getHomes, getRooms, getManufacturers, decodePayload } from '../services/api'
 import type { Home, Room, Manufacturer, DeviceCreate } from '../types'
 
@@ -13,13 +15,21 @@ const DEVICE_TYPES = [
   'TV/Display', 'Robot Vacuum', 'Other',
 ]
 
+type InputMode = 'scan' | 'image' | 'manual'
+
 export default function AddDevice() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<Home[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [form, setForm] = useState<Partial<DeviceCreate>>({})
-  const [decoding, setDecoding] = useState(false)
+  const [inputMode, setInputMode] = useState<InputMode>('scan')
+  const [showScanner, setShowScanner] = useState(false)
+  const [scanBadge, setScanBadge] = useState('')
+  const [imageError, setImageError] = useState('')
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  // Hidden element required by Html5Qrcode for file scanning
+  const imgScannerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getHomes().then(setHomes)
@@ -28,23 +38,48 @@ export default function AddDevice() {
 
   useEffect(() => {
     if (form.home_id) getRooms(form.home_id).then(setRooms)
+    else setRooms([])
   }, [form.home_id])
 
   const set = (field: keyof DeviceCreate, value: string) =>
     setForm(f => ({ ...f, [field]: value || undefined }))
 
-  const handleDecodeQR = async () => {
-    if (!form.qr_code_data) return
-    setDecoding(true)
-    const result = await decodePayload(form.qr_code_data).catch(() => null)
-    if (result) {
+  const applyDecodeResult = async (payload: string) => {
+    setForm(f => ({ ...f, qr_code_data: payload }))
+    setScanBadge('Decoding…')
+    const result = await decodePayload(payload).catch(() => null)
+    if (result && result.protocol !== 'Unknown') {
       setForm(f => ({
         ...f,
-        protocol: result.protocol !== 'Unknown' ? result.protocol as DeviceCreate['protocol'] : f.protocol,
+        protocol: result.protocol as DeviceCreate['protocol'],
         pairing_code: result.pairing_code || result.passcode || f.pairing_code,
       }))
+      setScanBadge(`Detected: ${result.protocol}`)
+    } else {
+      setScanBadge('Code captured')
     }
-    setDecoding(false)
+  }
+
+  const handleScanResult = (text: string) => {
+    setShowScanner(false)
+    applyDecodeResult(text)
+  }
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageError('')
+    setScanBadge('Scanning image…')
+    try {
+      const qr = new Html5Qrcode('img-scanner-hidden')
+      const text = await qr.scanFile(file, false)
+      await applyDecodeResult(text)
+    } catch {
+      setScanBadge('')
+      setImageError('No QR or barcode found in that image.')
+    }
+    // Reset so the same file can be re-selected
+    if (imageInputRef.current) imageInputRef.current.value = ''
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,128 +96,205 @@ export default function AddDevice() {
     </label>
   )
 
-  const input = (f: keyof DeviceCreate, placeholder?: string) => (
+  const inp = (f: keyof DeviceCreate, placeholder?: string, extra?: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input
       className="border rounded-lg px-3 py-2"
       placeholder={placeholder}
       value={(form[f] as string) ?? ''}
       onChange={e => set(f, e.target.value)}
+      {...extra}
     />
   )
 
+  // Unique model names from existing devices (via manufacturer context) — simple datalist
+  const modelSuggestions = Array.from(new Set(manufacturers.map(m => m.name))).sort()
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Link to="/devices" className="text-gray-400 hover:text-gray-700">
-          <ArrowLeft size={20} />
-        </Link>
-        <h1 className="text-2xl font-bold">Add Device</h1>
-      </div>
+    <>
+      {showScanner && (
+        <Scanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
+      )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {field('Name *', input('name', 'e.g. Living Room Lamp'))}
+      {/* Hidden element required by html5-qrcode scanFile */}
+      <div id="img-scanner-hidden" ref={imgScannerRef} className="hidden" />
 
-        {field('Home *',
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={form.home_id ?? ''}
-            onChange={e => set('home_id', e.target.value)}
-            required
-          >
-            <option value="">Select home…</option>
-            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-        )}
+      <div className="max-w-xl mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Link to="/devices" className="text-gray-400 hover:text-gray-700">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold">Add Device</h1>
+        </div>
 
-        {field('Room',
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={form.room_id ?? ''}
-            onChange={e => set('room_id', e.target.value)}
-            disabled={!form.home_id}
-          >
-            <option value="">No room</option>
-            {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        )}
+        {/* Code input mode selector */}
+        <div className="bg-white border rounded-xl p-4 mb-4">
+          <p className="text-sm font-semibold text-gray-700 mb-3">How do you want to add the pairing code?</p>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {([
+              { mode: 'scan', icon: Camera, label: 'Scan Camera' },
+              { mode: 'image', icon: ImageUp, label: 'Upload Image' },
+              { mode: 'manual', icon: Keyboard, label: 'Manual Entry' },
+            ] as const).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setInputMode(mode)}
+                className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                  inputMode === mode
+                    ? 'bg-blue-50 border-blue-400 text-blue-700'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Icon size={20} />
+                {label}
+              </button>
+            ))}
+          </div>
 
-        {field('Protocol',
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={form.protocol ?? ''}
-            onChange={e => set('protocol', e.target.value)}
-          >
-            <option value="">Unknown</option>
-            {PROTOCOLS.map(p => <option key={p}>{p}</option>)}
-          </select>
-        )}
+          {inputMode === 'scan' && (
+            <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
+            >
+              <Camera size={18} /> Open Camera
+            </button>
+          )}
 
-        {field('Device Type',
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={form.device_type ?? ''}
-            onChange={e => set('device_type', e.target.value)}
-          >
-            <option value="">Unknown</option>
-            {DEVICE_TYPES.map(t => <option key={t}>{t}</option>)}
-          </select>
-        )}
+          {inputMode === 'image' && (
+            <div className="flex flex-col gap-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFile}
+                className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100"
+              />
+              {imageError && <p className="text-sm text-red-500">{imageError}</p>}
+            </div>
+          )}
 
-        {field('Manufacturer',
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={form.manufacturer_id ?? ''}
-            onChange={e => set('manufacturer_id', e.target.value)}
-          >
-            <option value="">Unknown</option>
-            {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        )}
-
-        {field('Model', input('model', 'e.g. TRADFRI LED Bulb E27'))}
-
-        <div className="border-t pt-4">
-          <p className="text-sm font-semibold text-gray-700 mb-3">Pairing Codes</p>
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-gray-600 font-medium">QR Code Data</span>
-              <div className="flex gap-2">
+          {inputMode === 'manual' && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-gray-600 font-medium">QR Code Data</span>
                 <input
-                  className="border rounded-lg px-3 py-2 flex-1 font-mono text-xs"
+                  className="border rounded-lg px-3 py-2 font-mono text-xs"
                   placeholder="MT:Y.K9042C00KA0648G00"
                   value={form.qr_code_data ?? ''}
                   onChange={e => set('qr_code_data', e.target.value)}
                 />
-                <button
-                  type="button"
-                  onClick={handleDecodeQR}
-                  disabled={!form.qr_code_data || decoding}
-                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm disabled:opacity-40"
-                >
-                  Decode
-                </button>
-              </div>
-            </label>
-            {field('Pairing Code', input('pairing_code', 'e.g. 123-45-678'))}
-          </div>
+              </label>
+              {field('Pairing Code', inp('pairing_code', 'e.g. 123-45-678'))}
+            </div>
+          )}
+
+          {/* Scan result badge */}
+          {scanBadge && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+              <CheckCircle size={16} />
+              {scanBadge}
+            </div>
+          )}
+
+          {/* Show captured QR data read-only when not in manual mode */}
+          {inputMode !== 'manual' && form.qr_code_data && (
+            <p className="mt-2 text-xs text-gray-400 font-mono truncate">{form.qr_code_data}</p>
+          )}
         </div>
 
-        {field('Notes',
-          <textarea
-            className="border rounded-lg px-3 py-2 h-20 resize-none"
-            value={form.notes ?? ''}
-            onChange={e => set('notes', e.target.value)}
-          />
-        )}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {field('Name *', inp('name', 'e.g. Living Room Lamp'))}
 
-        <button
-          type="submit"
-          className="mt-2 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40"
-          disabled={!form.name || !form.home_id}
-        >
-          Save Device
-        </button>
-      </form>
-    </div>
+          {field('Home *',
+            <select
+              className="border rounded-lg px-3 py-2"
+              value={form.home_id ?? ''}
+              onChange={e => set('home_id', e.target.value)}
+              required
+            >
+              <option value="">Select home…</option>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+
+          {field('Room',
+            <select
+              className="border rounded-lg px-3 py-2"
+              value={form.room_id ?? ''}
+              onChange={e => set('room_id', e.target.value)}
+              disabled={!form.home_id}
+            >
+              <option value="">No room</option>
+              {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          )}
+
+          {field('Protocol',
+            <select
+              className="border rounded-lg px-3 py-2"
+              value={form.protocol ?? ''}
+              onChange={e => set('protocol', e.target.value)}
+            >
+              <option value="">Unknown</option>
+              {PROTOCOLS.map(p => <option key={p}>{p}</option>)}
+            </select>
+          )}
+
+          {field('Device Type',
+            <select
+              className="border rounded-lg px-3 py-2"
+              value={form.device_type ?? ''}
+              onChange={e => set('device_type', e.target.value)}
+            >
+              <option value="">Unknown</option>
+              {DEVICE_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          )}
+
+          {field('Manufacturer',
+            <select
+              className="border rounded-lg px-3 py-2"
+              value={form.manufacturer_id ?? ''}
+              onChange={e => set('manufacturer_id', e.target.value)}
+            >
+              <option value="">Unknown</option>
+              {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          )}
+
+          {field('Model',
+            <>
+              <input
+                className="border rounded-lg px-3 py-2"
+                placeholder="e.g. TRADFRI LED Bulb E27"
+                list="model-suggestions"
+                value={form.model ?? ''}
+                onChange={e => set('model', e.target.value)}
+              />
+              <datalist id="model-suggestions">
+                {modelSuggestions.map(s => <option key={s} value={s} />)}
+              </datalist>
+            </>
+          )}
+
+          {field('Notes',
+            <textarea
+              className="border rounded-lg px-3 py-2 h-20 resize-none"
+              value={form.notes ?? ''}
+              onChange={e => set('notes', e.target.value)}
+            />
+          )}
+
+          <button
+            type="submit"
+            className="mt-2 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40"
+            disabled={!form.name || !form.home_id}
+          >
+            Save Device
+          </button>
+        </form>
+      </div>
+    </>
   )
 }

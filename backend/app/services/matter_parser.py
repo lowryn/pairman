@@ -5,7 +5,8 @@ Full spec: github.com/project-chip/connectedhomeip — src/setup_payload
 """
 
 MATTER_PREFIX = "MT:"
-HOMEKIT_PATTERN_LEN = 8  # digits only, formatted XXX-XX-XXX
+HOMEKIT_PATTERN_LEN = 8   # digits only, formatted XXX-XX-XXX
+ZWAVE_DSK_GROUPS = 8      # 8 groups of 5 digits, e.g. 12345-12345-...
 
 BASE38_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-."
 
@@ -66,11 +67,31 @@ def _decode_homekit(payload: str) -> dict:
     }
 
 
+def _decode_zwave(payload: str) -> dict:
+    return {
+        "protocol": "Z-Wave",
+        "pairing_code": payload,
+        "dsk": payload,
+        "raw": payload,
+    }
+
+
+def _is_zwave_dsk(payload: str) -> bool:
+    parts = payload.strip().split("-")
+    return (
+        len(parts) == ZWAVE_DSK_GROUPS
+        and all(p.isdigit() and len(p) == 5 for p in parts)
+    )
+
+
 def decode_payload(payload: str) -> dict:
     payload = payload.strip()
 
     if payload.startswith(MATTER_PREFIX):
         return _decode_matter(payload)
+
+    if _is_zwave_dsk(payload):
+        return _decode_zwave(payload)
 
     digits_only = payload.replace("-", "").replace(" ", "")
     if digits_only.isdigit() and len(digits_only) == HOMEKIT_PATTERN_LEN:
