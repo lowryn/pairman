@@ -1,0 +1,82 @@
+"""
+Basic Matter QR code parser.
+Matter QR payloads begin with 'MT:' and are Base38-encoded.
+Full spec: github.com/project-chip/connectedhomeip — src/setup_payload
+"""
+
+MATTER_PREFIX = "MT:"
+HOMEKIT_PATTERN_LEN = 8  # digits only, formatted XXX-XX-XXX
+
+BASE38_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-."
+
+
+def _base38_decode(s: str) -> int:
+    value = 0
+    for ch in reversed(s):
+        if ch not in BASE38_CHARS:
+            raise ValueError(f"Invalid Base38 character: {ch}")
+        value = value * 38 + BASE38_CHARS.index(ch)
+    return value
+
+
+def _decode_matter(payload: str) -> dict:
+    encoded = payload[len(MATTER_PREFIX):]
+    try:
+        raw = _base38_decode(encoded)
+    except ValueError:
+        return {"protocol": "Matter", "raw": payload, "error": "Base38 decode failed"}
+
+    # Bit layout per Matter spec (simplified):
+    # bits 0-2:   version (3 bits)
+    # bits 3-18:  vendor_id (16 bits)
+    # bits 19-34: product_id (16 bits)
+    # bits 35-36: custom flow (2 bits)
+    # bits 37-43: discovery capabilities (7 bits)
+    # bits 44-55: discriminator (12 bits)
+    # bits 56-82: passcode (27 bits)
+    # bits 83:    padding
+    version = raw & 0x7
+    vendor_id = (raw >> 3) & 0xFFFF
+    product_id = (raw >> 19) & 0xFFFF
+    custom_flow = (raw >> 35) & 0x3
+    discovery = (raw >> 37) & 0x7F
+    discriminator = (raw >> 44) & 0xFFF
+    passcode = (raw >> 56) & 0x7FFFFFF
+
+    return {
+        "protocol": "Matter",
+        "version": version,
+        "vendor_id": f"0x{vendor_id:04X}",
+        "product_id": f"0x{product_id:04X}",
+        "custom_flow": custom_flow,
+        "discovery_capabilities": discovery,
+        "discriminator": discriminator,
+        "passcode": str(passcode).zfill(8),
+        "raw": payload,
+    }
+
+
+def _decode_homekit(payload: str) -> dict:
+    digits = payload.replace("-", "").replace(" ", "")
+    return {
+        "protocol": "HomeKit",
+        "pairing_code": payload,
+        "formatted": f"{digits[:3]}-{digits[3:5]}-{digits[5:]}",
+        "raw": payload,
+    }
+
+
+def decode_payload(payload: str) -> dict:
+    payload = payload.strip()
+
+    if payload.startswith(MATTER_PREFIX):
+        return _decode_matter(payload)
+
+    digits_only = payload.replace("-", "").replace(" ", "")
+    if digits_only.isdigit() and len(digits_only) == HOMEKIT_PATTERN_LEN:
+        return _decode_homekit(payload)
+
+    if digits_only.isdigit() and len(digits_only) in (11, 21):
+        return {"protocol": "Matter", "pairing_code": payload, "raw": payload}
+
+    return {"protocol": "Unknown", "raw": payload}

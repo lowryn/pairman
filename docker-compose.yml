@@ -1,0 +1,13 @@
+services:
+  pairman:
+    build: .
+    container_name: pairman
+    restart: unless-stopped
+    ports:
+      - "7070:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Europe/London
+      # Uncomment to use PostgreSQL instead of SQLite:
+      # - PAIRMAN_DB_URL=postgresql://user:pass@db:5432/pairman
