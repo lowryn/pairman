@@ -27,22 +27,22 @@ def _decode_matter(payload: str) -> dict:
     except ValueError:
         return {"protocol": "Matter", "raw": payload, "error": "Base38 decode failed"}
 
-    # Bit layout per Matter spec (simplified):
+    # Bit layout per Matter spec (connectedhomeip SetupPayload.h):
     # bits 0-2:   version (3 bits)
     # bits 3-18:  vendor_id (16 bits)
     # bits 19-34: product_id (16 bits)
     # bits 35-36: custom flow (2 bits)
-    # bits 37-43: discovery capabilities (7 bits)
-    # bits 44-55: discriminator (12 bits)
-    # bits 56-82: passcode (27 bits)
-    # bits 83:    padding
+    # bits 37-44: discovery capabilities (8 bits)  ← 8, not 7
+    # bits 45-56: discriminator (12 bits)
+    # bits 57-83: passcode (27 bits)
+    # bits 84-87: padding (4 bits)
     version = raw & 0x7
     vendor_id = (raw >> 3) & 0xFFFF
     product_id = (raw >> 19) & 0xFFFF
     custom_flow = (raw >> 35) & 0x3
-    discovery = (raw >> 37) & 0x7F
-    discriminator = (raw >> 44) & 0xFFF
-    passcode = (raw >> 56) & 0x7FFFFFF
+    discovery = (raw >> 37) & 0xFF
+    discriminator = (raw >> 45) & 0xFFF
+    passcode = (raw >> 57) & 0x7FFFFFF
 
     return {
         "protocol": "Matter",

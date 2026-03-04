@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Camera, ImageUp, Keyboard, CheckCircle } from 'lucide-react'
-import { Html5Qrcode } from 'html5-qrcode'
+import jsQR from 'jsqr'
 import Scanner from '../components/Scanner'
 import { createDevice, getHomes, getRooms, getManufacturers, decodePayload } from '../services/api'
 import type { Home, Room, Manufacturer, DeviceCreate } from '../types'
@@ -28,8 +28,6 @@ export default function AddDevice() {
   const [scanBadge, setScanBadge] = useState('')
   const [imageError, setImageError] = useState('')
   const imageInputRef = useRef<HTMLInputElement>(null)
-  // Hidden element required by Html5Qrcode for file scanning
-  const imgScannerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getHomes().then(setHomes)
@@ -71,14 +69,32 @@ export default function AddDevice() {
     setImageError('')
     setScanBadge('Scanning image…')
     try {
-      const qr = new Html5Qrcode('img-scanner-hidden')
-      const text = await qr.scanFile(file, false)
-      await applyDecodeResult(text)
+      const bitmap = await createImageBitmap(file)
+
+      // jsQR needs the QR code modules to be a reasonable pixel size.
+      // Phone camera photos (12MP+) are too large — scale down to max 1024px.
+      const MAX_DIM = 1024
+      const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height))
+      const w = Math.round(bitmap.width * scale)
+      const h = Math.round(bitmap.height * scale)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+      ctx.drawImage(bitmap, 0, 0, w, h)
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const code = jsQR(imageData.data, imageData.width, imageData.height)
+      if (code?.data) {
+        await applyDecodeResult(code.data)
+      } else {
+        setScanBadge('')
+        setImageError('No QR code found. Try a clearer, closer photo of just the QR code.')
+      }
     } catch {
       setScanBadge('')
-      setImageError('No QR or barcode found in that image.')
+      setImageError('Could not process that image.')
     }
-    // Reset so the same file can be re-selected
     if (imageInputRef.current) imageInputRef.current.value = ''
   }
 
@@ -114,9 +130,6 @@ export default function AddDevice() {
       {showScanner && (
         <Scanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
       )}
-
-      {/* Hidden element required by html5-qrcode scanFile */}
-      <div id="img-scanner-hidden" ref={imgScannerRef} className="hidden" />
 
       <div className="max-w-xl mx-auto px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
