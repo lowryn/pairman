@@ -63,6 +63,13 @@ export interface DeviceCreate {
   pairing_code?: string
   qr_code_data?: string
   setup_code_type?: SetupCodeType
+  serial_number?: string
+  mac_address?: string
+  firmware_version?: string
+  admin_url?: string
+  purchase_date?: string
+  retailer?: string
+  warranty_expiry?: string
   notes?: string
 }
 
