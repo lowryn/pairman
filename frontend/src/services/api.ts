@@ -58,6 +58,11 @@ export const importDevices = (file: File) => {
 
 // Backup
 export const getBackupUrl = () => '/api/v1/backup'
+export const restoreBackup = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post('/backup/restore', form).then(r => r.data)
+}
 
 // Stats
 export const getStats = () => api.get<DashboardStats>('/stats').then(r => r.data)

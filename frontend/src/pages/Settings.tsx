@@ -5,7 +5,7 @@ import {
   getRooms, createRoom, deleteRoom,
   getManufacturers, createManufacturer, deleteManufacturer,
   getExportUrl, importDevices,
-  getBackupUrl,
+  getBackupUrl, restoreBackup,
 } from '../services/api'
 import type { Home, Room, Manufacturer } from '../types'
 
@@ -19,7 +19,9 @@ export default function Settings() {
   const [newRoomHome, setNewRoomHome] = useState('')
   const [newMfr, setNewMfr] = useState('')
   const [importStatus, setImportStatus] = useState<string>('')
+  const [restoreStatus, setRestoreStatus] = useState<string>('')
   const importRef = useRef<HTMLInputElement>(null)
+  const restoreRef = useRef<HTMLInputElement>(null)
 
   const reload = () => {
     getHomes().then(h => { setHomes(h); if (!newRoomHome && h.length) setNewRoomHome(h[0].id) })
@@ -203,13 +205,42 @@ export default function Settings() {
 
         {/* Backup */}
         <Section title="Backup & Restore">
-          <a
-            href={getBackupUrl()}
-            download="pairman-backup.db"
-            className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
-          >
-            Download Backup
-          </a>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <a
+              href={getBackupUrl()}
+              download="pairman-backup.db"
+              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              Download Backup
+            </a>
+            <button
+              onClick={() => restoreRef.current?.click()}
+              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              <Upload size={14} /> Restore from Backup
+            </button>
+            <input
+              ref={restoreRef}
+              type="file"
+              accept=".db"
+              className="hidden"
+              onChange={async e => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                if (!confirm('This will replace ALL current data with the backup. Continue?')) return
+                setRestoreStatus('Restoring…')
+                try {
+                  await restoreBackup(file)
+                  setRestoreStatus('Restore successful. Reloading…')
+                  setTimeout(() => window.location.reload(), 1500)
+                } catch {
+                  setRestoreStatus('Restore failed. Make sure the file is a valid Pairman backup.')
+                }
+                if (restoreRef.current) restoreRef.current.value = ''
+              }}
+            />
+          </div>
+          {restoreStatus && <p className="text-sm text-gray-600">{restoreStatus}</p>}
         </Section>
       </div>
     </div>
