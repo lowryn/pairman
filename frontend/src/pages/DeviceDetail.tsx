@@ -86,23 +86,23 @@ export default function DeviceDetail() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center gap-3 mb-6">
-        <Link to="/devices" className="text-gray-400 hover:text-gray-700">
+        <Link to="/devices" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-2xl font-bold flex-1">{device.name}</h1>
-        <Link to={`/devices/${id}/edit`} className="p-2 hover:bg-gray-100 rounded-lg">
+        <h1 className="text-2xl font-bold flex-1 dark:text-gray-100">{device.name}</h1>
+        <Link to={`/devices/${id}/edit`} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
           <Pencil size={18} />
         </Link>
-        <button onClick={handleDelete} className="p-2 hover:bg-red-50 text-red-500 rounded-lg">
+        <button onClick={handleDelete} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-lg">
           <Trash2 size={18} />
         </button>
       </div>
 
       {qrData && (
-        <div className="bg-white border rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
           <QRCodeSVG value={qrData} size={200} />
           {device.pairing_code && (
-            <p className="font-mono text-lg tracking-widest">
+            <p className="font-mono text-lg tracking-widest dark:text-gray-100">
             {device.pairing_code?.length === 11
               ? `${device.pairing_code.slice(0,4)}-${device.pairing_code.slice(4,7)}-${device.pairing_code.slice(7,11)}`
               : device.pairing_code}
@@ -112,14 +112,14 @@ export default function DeviceDetail() {
             href={getDeviceLabelUrl(device.id)}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
           >
             <Printer size={16} /> Print Label
           </a>
         </div>
       )}
 
-      <div className="bg-white border rounded-xl divide-y">
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl divide-y dark:divide-gray-700">
         {[
           ['Model', device.model],
           ['Protocol', device.protocol],
@@ -133,46 +133,46 @@ export default function DeviceDetail() {
           ['Admin URL', device.admin_url],
         ].filter(([, v]) => v).map(([label, value]) => (
           <div key={label as string} className="flex px-4 py-3 text-sm">
-            <span className="text-gray-500 w-36 shrink-0">{label}</span>
-            <span>{value as string}</span>
+            <span className="text-gray-500 dark:text-gray-400 w-36 shrink-0">{label}</span>
+            <span className="dark:text-gray-100">{value as string}</span>
           </div>
         ))}
         {device.notes && (
           <div className="px-4 py-3 text-sm">
-            <p className="text-gray-500 mb-1">Notes</p>
-            <p className="whitespace-pre-wrap">{device.notes}</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-1">Notes</p>
+            <p className="whitespace-pre-wrap dark:text-gray-100">{device.notes}</p>
           </div>
         )}
       </div>
 
       {/* Custom Fields */}
-      <div className="bg-white border rounded-xl mt-4">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-semibold">Custom Fields</h2>
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl mt-4">
+        <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
+          <h2 className="font-semibold dark:text-gray-100">Custom Fields</h2>
           <button
             onClick={() => { setNewField({ key: '', value: '' }); setEditingField(null) }}
-            className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg"
+            className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-3 py-1.5 rounded-lg"
           >
             <Plus size={14} /> Add
           </button>
         </div>
 
         {fields.length === 0 && !newField ? (
-          <p className="px-4 py-4 text-sm text-gray-400">No custom fields yet.</p>
+          <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">No custom fields yet.</p>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y dark:divide-gray-700">
             {fields.map(f => (
               <li key={f.id} className="flex items-center gap-2 px-4 py-2">
                 {editingField?.id === f.id ? (
                   <>
                     <input
-                      className="border rounded px-2 py-1 text-sm w-32 shrink-0"
+                      className="border dark:border-gray-600 rounded px-2 py-1 text-sm w-32 shrink-0 dark:bg-gray-800 dark:text-gray-100"
                       value={editingField.key}
                       onChange={e => setEditingField({ ...editingField, key: e.target.value })}
                       onKeyDown={e => e.key === 'Enter' && saveEditField()}
                     />
                     <input
-                      className="border rounded px-2 py-1 text-sm flex-1"
+                      className="border dark:border-gray-600 rounded px-2 py-1 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
                       value={editingField.value}
                       onChange={e => setEditingField({ ...editingField, value: e.target.value })}
                       onKeyDown={e => e.key === 'Enter' && saveEditField()}
@@ -187,11 +187,11 @@ export default function DeviceDetail() {
                   </>
                 ) : (
                   <>
-                    <span className="text-sm text-gray-500 w-32 shrink-0 truncate">{f.key}</span>
-                    <span className="text-sm flex-1 truncate">{f.value}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 w-32 shrink-0 truncate">{f.key}</span>
+                    <span className="text-sm flex-1 truncate dark:text-gray-100">{f.value}</span>
                     <button
                       onClick={() => { setEditingField({ id: f.id, key: f.key, value: f.value }); setNewField(null) }}
-                      className="p-1.5 text-gray-400 hover:text-gray-700"
+                      className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     >
                       <Pencil size={14} />
                     </button>
@@ -205,7 +205,7 @@ export default function DeviceDetail() {
             {newField && (
               <li className="flex items-center gap-2 px-4 py-2">
                 <input
-                  className="border rounded px-2 py-1 text-sm w-32 shrink-0"
+                  className="border dark:border-gray-600 rounded px-2 py-1 text-sm w-32 shrink-0 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Key"
                   value={newField.key}
                   onChange={e => setNewField({ ...newField, key: e.target.value })}
@@ -213,7 +213,7 @@ export default function DeviceDetail() {
                   autoFocus
                 />
                 <input
-                  className="border rounded px-2 py-1 text-sm flex-1"
+                  className="border dark:border-gray-600 rounded px-2 py-1 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Value"
                   value={newField.value}
                   onChange={e => setNewField({ ...newField, value: e.target.value })}
@@ -232,18 +232,18 @@ export default function DeviceDetail() {
       </div>
 
       {/* Attachments */}
-      <div className="bg-white border rounded-xl mt-4">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-semibold flex items-center gap-2">
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl mt-4">
+        <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
+          <h2 className="font-semibold flex items-center gap-2 dark:text-gray-100">
             <Paperclip size={16} /> Attachments
             {attachments.length > 0 && (
-              <span className="text-xs text-gray-400 font-normal">({attachments.length})</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">({attachments.length})</span>
             )}
           </h2>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg disabled:opacity-50"
+            className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
             <Upload size={14} /> {uploading ? 'Uploading…' : 'Upload'}
           </button>
@@ -251,15 +251,15 @@ export default function DeviceDetail() {
         </div>
 
         {attachments.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-gray-400">No attachments yet.</p>
+          <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">No attachments yet.</p>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y dark:divide-gray-700">
             {attachments.map(att => (
               <li key={att.id} className="flex items-center gap-3 px-4 py-3">
                 <AttachmentIcon fileType={att.file_type} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{att.filename}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm font-medium truncate dark:text-gray-100">{att.filename}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
                     {formatBytes(att.file_size)}
                     {att.description && ` · ${att.description}`}
                   </p>
@@ -274,7 +274,7 @@ export default function DeviceDetail() {
                 <a
                   href={getAttachmentDownloadUrl(att.id)}
                   download={att.filename}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 shrink-0"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 shrink-0"
                 >
                   <Download size={15} />
                 </a>

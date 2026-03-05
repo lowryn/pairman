@@ -107,14 +107,14 @@ export default function AddDevice() {
 
   const field = (label: string, el: React.ReactNode) => (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-gray-600 font-medium">{label}</span>
+      <span className="text-gray-600 dark:text-gray-300 font-medium">{label}</span>
       {el}
     </label>
   )
 
   const inp = (f: keyof DeviceCreate, placeholder?: string, extra?: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input
-      className="border rounded-lg px-3 py-2"
+      className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
       placeholder={placeholder}
       value={(form[f] as string) ?? ''}
       onChange={e => set(f, e.target.value)}
@@ -133,15 +133,15 @@ export default function AddDevice() {
 
       <div className="max-w-xl mx-auto px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/devices" className="text-gray-400 hover:text-gray-700">
+          <Link to="/devices" className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <ArrowLeft size={20} />
           </Link>
-          <h1 className="text-2xl font-bold">Add Device</h1>
+          <h1 className="text-2xl font-bold dark:text-gray-100">Add Device</h1>
         </div>
 
         {/* Code input mode selector */}
-        <div className="bg-white border rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-gray-700 mb-3">How do you want to add the pairing code?</p>
+        <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-4 mb-4">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">How do you want to add the pairing code?</p>
           <div className="grid grid-cols-3 gap-2 mb-4">
             {([
               { mode: 'scan', icon: Camera, label: 'Scan Camera' },
@@ -155,7 +155,7 @@ export default function AddDevice() {
                 className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border text-sm font-medium transition-colors ${
                   inputMode === mode
                     ? 'bg-blue-50 border-blue-400 text-blue-700'
-                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 <Icon size={20} />
@@ -190,9 +190,9 @@ export default function AddDevice() {
           {inputMode === 'manual' && (
             <div className="flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-gray-600 font-medium">QR Code Data</span>
+                <span className="text-gray-600 dark:text-gray-300 font-medium">QR Code Data</span>
                 <input
-                  className="border rounded-lg px-3 py-2 font-mono text-xs"
+                  className="border dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-xs dark:bg-gray-800 dark:text-gray-100"
                   placeholder="MT:Y.K9042C00KA0648G00"
                   value={form.qr_code_data ?? ''}
                   onChange={e => set('qr_code_data', e.target.value)}
@@ -212,7 +212,7 @@ export default function AddDevice() {
 
           {/* Show captured QR data read-only when not in manual mode */}
           {inputMode !== 'manual' && form.qr_code_data && (
-            <p className="mt-2 text-xs text-gray-400 font-mono truncate">{form.qr_code_data}</p>
+            <p className="mt-2 text-xs text-gray-400 dark:text-gray-500 font-mono truncate">{form.qr_code_data}</p>
           )}
         </div>
 
@@ -221,7 +221,7 @@ export default function AddDevice() {
 
           {field('Home *',
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
               value={form.home_id ?? ''}
               onChange={e => set('home_id', e.target.value)}
               required
@@ -233,7 +233,7 @@ export default function AddDevice() {
 
           {field('Room',
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
               value={form.room_id ?? ''}
               onChange={e => set('room_id', e.target.value)}
               disabled={!form.home_id}
@@ -245,7 +245,7 @@ export default function AddDevice() {
 
           {field('Protocol',
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
               value={form.protocol ?? ''}
               onChange={e => set('protocol', e.target.value)}
             >
@@ -256,7 +256,7 @@ export default function AddDevice() {
 
           {field('Device Type',
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
               value={form.device_type ?? ''}
               onChange={e => set('device_type', e.target.value)}
             >
@@ -267,7 +267,7 @@ export default function AddDevice() {
 
           {field('Manufacturer',
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
               value={form.manufacturer_id ?? ''}
               onChange={e => set('manufacturer_id', e.target.value)}
             >
@@ -279,7 +279,7 @@ export default function AddDevice() {
           {field('Model',
             <>
               <input
-                className="border rounded-lg px-3 py-2"
+                className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="e.g. TRADFRI LED Bulb E27"
                 list="model-suggestions"
                 value={form.model ?? ''}
@@ -293,7 +293,7 @@ export default function AddDevice() {
 
           {field('Notes',
             <textarea
-              className="border rounded-lg px-3 py-2 h-20 resize-none"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 h-20 resize-none dark:bg-gray-800 dark:text-gray-100"
               value={form.notes ?? ''}
               onChange={e => set('notes', e.target.value)}
             />

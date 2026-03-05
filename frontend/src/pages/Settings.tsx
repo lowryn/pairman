@@ -59,16 +59,16 @@ export default function Settings() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Settings</h1>
 
       <div className="flex flex-col gap-4">
         {/* Homes */}
         <Section title="Homes">
-          <ul className="divide-y mb-3">
+          <ul className="divide-y dark:divide-gray-700 mb-3">
             {homes.length === 0 && <li className="py-2 text-sm text-gray-400">No homes yet</li>}
             {homes.map(h => (
               <li key={h.id} className="flex items-center justify-between py-2">
-                <span className="text-sm">{h.name}</span>
+                <span className="text-sm dark:text-gray-200">{h.name}</span>
                 <button onClick={() => deleteHome(h.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
                   <Trash2 size={16} />
                 </button>
@@ -77,7 +77,7 @@ export default function Settings() {
           </ul>
           <div className="flex gap-2">
             <input
-              className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+              className="border dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Home name"
               value={newHome}
               onChange={e => setNewHome(e.target.value)}
@@ -91,11 +91,11 @@ export default function Settings() {
 
         {/* Rooms */}
         <Section title="Rooms">
-          <ul className="divide-y mb-3">
+          <ul className="divide-y dark:divide-gray-700 mb-3">
             {rooms.length === 0 && <li className="py-2 text-sm text-gray-400">No rooms yet</li>}
             {rooms.map(r => (
               <li key={r.id} className="flex items-center justify-between py-2">
-                <span className="text-sm">{r.name} <span className="text-gray-400">— {homeById(r.home_id)}</span></span>
+                <span className="text-sm dark:text-gray-200">{r.name} <span className="text-gray-400">— {homeById(r.home_id)}</span></span>
                 <button onClick={() => deleteRoom(r.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
                   <Trash2 size={16} />
                 </button>
@@ -107,14 +107,14 @@ export default function Settings() {
             : (
               <div className="flex gap-2">
                 <select
-                  className="border rounded-lg px-2 py-1.5 text-sm"
+                  className="border dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100"
                   value={newRoomHome}
                   onChange={e => setNewRoomHome(e.target.value)}
                 >
                   {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                 </select>
                 <input
-                  className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+                  className="border dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Room name"
                   value={newRoom}
                   onChange={e => setNewRoom(e.target.value)}
@@ -130,11 +130,11 @@ export default function Settings() {
 
         {/* Manufacturers */}
         <Section title="Manufacturers">
-          <ul className="divide-y mb-3">
+          <ul className="divide-y dark:divide-gray-700 mb-3">
             {manufacturers.length === 0 && <li className="py-2 text-sm text-gray-400">No manufacturers yet</li>}
             {manufacturers.map(m => (
               <li key={m.id} className="flex items-center justify-between py-2">
-                <span className="text-sm">{m.name}</span>
+                <span className="text-sm dark:text-gray-200">{m.name}</span>
                 <button onClick={() => deleteManufacturer(m.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
                   <Trash2 size={16} />
                 </button>
@@ -143,7 +143,7 @@ export default function Settings() {
           </ul>
           <div className="flex gap-2">
             <input
-              className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+              className="border dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Manufacturer name"
               value={newMfr}
               onChange={e => setNewMfr(e.target.value)}
@@ -161,20 +161,20 @@ export default function Settings() {
             <a
               href={getExportUrl('json')}
               download="pairman-export.json"
-              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="inline-block bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
             >
               Export JSON
             </a>
             <a
               href={getExportUrl('csv')}
               download="pairman-export.csv"
-              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="inline-block bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
             >
               Export CSV
             </a>
             <button
               onClick={() => importRef.current?.click()}
-              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
             >
               <Upload size={14} /> Import CSV / JSON
             </button>
@@ -197,7 +197,7 @@ export default function Settings() {
               }}
             />
           </div>
-          {importStatus && <p className="text-sm text-gray-600">{importStatus}</p>}
+          {importStatus && <p className="text-sm text-gray-600 dark:text-gray-300">{importStatus}</p>}
           <p className="text-xs text-gray-400 mt-1">
             CSV/JSON must have columns: name, home, room, manufacturer, model, device_type, protocol, pairing_code, qr_code_data…
           </p>
@@ -209,13 +209,13 @@ export default function Settings() {
             <a
               href={getBackupUrl()}
               download="pairman-backup.db"
-              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="inline-block bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
             >
               Download Backup
             </a>
             <button
               onClick={() => restoreRef.current?.click()}
-              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg text-sm"
             >
               <Upload size={14} /> Restore from Backup
             </button>
@@ -240,7 +240,7 @@ export default function Settings() {
               }}
             />
           </div>
-          {restoreStatus && <p className="text-sm text-gray-600">{restoreStatus}</p>}
+          {restoreStatus && <p className="text-sm text-gray-600 dark:text-gray-300">{restoreStatus}</p>}
         </Section>
       </div>
     </div>
@@ -249,8 +249,8 @@ export default function Settings() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border rounded-xl p-4">
-      <h2 className="font-semibold mb-3">{title}</h2>
+    <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-4">
+      <h2 className="font-semibold mb-3 dark:text-gray-100">{title}</h2>
       {children}
     </div>
   )

@@ -20,13 +20,13 @@ export default function Labels() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Print Labels</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Print Labels</h1>
 
-      <div className="bg-white border rounded-xl p-6 flex flex-col gap-4">
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-6 flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-600 font-medium">Filter by Home</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">Filter by Home</span>
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={homeFilter}
             onChange={e => { setHomeFilter(e.target.value); setRoomFilter('') }}
           >
@@ -36,9 +36,9 @@ export default function Labels() {
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-600 font-medium">Filter by Room</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">Filter by Room</span>
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={roomFilter}
             onChange={e => setRoomFilter(e.target.value)}
             disabled={!homeFilter}

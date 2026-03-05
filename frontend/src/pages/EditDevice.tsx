@@ -49,14 +49,14 @@ export default function EditDevice() {
 
   const field = (label: string, el: React.ReactNode) => (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-gray-600 font-medium">{label}</span>
+      <span className="text-gray-600 dark:text-gray-300 font-medium">{label}</span>
       {el}
     </label>
   )
 
   const input = (f: keyof DeviceCreate, placeholder?: string) => (
     <input
-      className="border rounded-lg px-3 py-2"
+      className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
       placeholder={placeholder}
       value={(form[f] as string) ?? ''}
       onChange={e => set(f, e.target.value)}
@@ -66,10 +66,10 @@ export default function EditDevice() {
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
       <div className="flex items-center gap-3 mb-6">
-        <Link to={`/devices/${id}`} className="text-gray-400 hover:text-gray-700">
+        <Link to={`/devices/${id}`} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-2xl font-bold">Edit Device</h1>
+        <h1 className="text-2xl font-bold dark:text-gray-100">Edit Device</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -77,7 +77,7 @@ export default function EditDevice() {
 
         {field('Home *',
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={form.home_id ?? ''}
             onChange={e => set('home_id', e.target.value)}
             required
@@ -89,7 +89,7 @@ export default function EditDevice() {
 
         {field('Room',
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={form.room_id ?? ''}
             onChange={e => set('room_id', e.target.value)}
             disabled={!form.home_id}
@@ -101,7 +101,7 @@ export default function EditDevice() {
 
         {field('Protocol',
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={form.protocol ?? ''}
             onChange={e => set('protocol', e.target.value)}
           >
@@ -112,7 +112,7 @@ export default function EditDevice() {
 
         {field('Device Type',
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={form.device_type ?? ''}
             onChange={e => set('device_type', e.target.value)}
           >
@@ -123,7 +123,7 @@ export default function EditDevice() {
 
         {field('Manufacturer',
           <select
-            className="border rounded-lg px-3 py-2"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
             value={form.manufacturer_id ?? ''}
             onChange={e => set('manufacturer_id', e.target.value)}
           >
@@ -134,12 +134,12 @@ export default function EditDevice() {
 
         {field('Model', input('model', 'e.g. TRADFRI LED Bulb E27'))}
 
-        <div className="border-t pt-4">
-          <p className="text-sm font-semibold text-gray-700 mb-3">Pairing Codes</p>
+        <div className="border-t dark:border-gray-700 pt-4">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Pairing Codes</p>
           <div className="flex flex-col gap-3">
             {field('QR Code Data',
               <input
-                className="border rounded-lg px-3 py-2 font-mono text-xs"
+                className="border dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-xs dark:bg-gray-800 dark:text-gray-100"
                 placeholder="MT:Y.K9042C00KA0648G00"
                 value={form.qr_code_data ?? ''}
                 onChange={e => set('qr_code_data', e.target.value)}
@@ -157,7 +157,7 @@ export default function EditDevice() {
 
         {field('Notes',
           <textarea
-            className="border rounded-lg px-3 py-2 h-20 resize-none"
+            className="border dark:border-gray-600 rounded-lg px-3 py-2 h-20 resize-none dark:bg-gray-800 dark:text-gray-100"
             value={form.notes ?? ''}
             onChange={e => set('notes', e.target.value)}
           />
@@ -166,7 +166,7 @@ export default function EditDevice() {
         <div className="flex gap-3 mt-2">
           <Link
             to={`/devices/${id}`}
-            className="flex-1 text-center py-3 rounded-lg border font-medium text-gray-600 hover:bg-gray-50"
+            className="flex-1 text-center py-3 rounded-lg border dark:border-gray-600 font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </Link>
