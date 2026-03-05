@@ -1,6 +1,8 @@
 services:
   pairman:
-    build: .
+    image: ghcr.io/lowryn/pairman:latest
+    # To build locally instead: comment out image above and uncomment:
+    # build: .
     container_name: pairman
     restart: unless-stopped
     ports:
