@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, QrCode, SlidersHorizontal, X } from 'lucide-react'
-import { getDevices, getHomes, getRooms, getManufacturers } from '../services/api'
+import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -175,16 +175,23 @@ export default function DeviceList() {
             className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="font-semibold truncate dark:text-gray-100">{device.name}</h2>
                 {device.model && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{device.model}</p>}
                 {!device.model && mfrName(device.manufacturer_id) && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName(device.manufacturer_id)}</p>
                 )}
               </div>
-              {(device.qr_code_data || device.pairing_code) && (
-                <QrCode size={18} className="text-gray-300 dark:text-gray-600 shrink-0 mt-0.5" />
-              )}
+              {device.thumbnail_attachment_id
+                ? <img
+                    src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)}
+                    alt=""
+                    className="w-12 h-12 object-cover rounded-lg shrink-0"
+                  />
+                : (device.qr_code_data || device.pairing_code) && (
+                    <QrCode size={18} className="text-gray-300 dark:text-gray-600 shrink-0 mt-0.5" />
+                  )
+              }
             </div>
 
             {(device.home_id || device.room_id) && (

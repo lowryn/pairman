@@ -51,6 +51,7 @@ class DeviceRead(DeviceBase):
     id: str
     barcode_image: str | None = None
     custom_image: str | None = None
+    thumbnail_attachment_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

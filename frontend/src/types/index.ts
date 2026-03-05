@@ -48,6 +48,7 @@ export interface Device {
   warranty_expiry?: string
   notes?: string
   custom_image?: string
+  thumbnail_attachment_id?: string
   created_at: string
   updated_at: string
 }

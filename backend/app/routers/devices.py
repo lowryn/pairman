@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Device, Home, Room, Manufacturer
+from ..models.attachment import Attachment
 from ..schemas import DeviceCreate, DeviceUpdate, DeviceRead
 from ..services.qr_service import generate_qr_png
 from ..services.label_service import generate_single_label
@@ -207,7 +208,26 @@ def list_devices(
             | Device.serial_number.ilike(like)
             | Device.pairing_code.ilike(like)
         )
-    return q.order_by(Device.name).all()
+    devices = q.order_by(Device.name).all()
+    if not devices:
+        return []
+    device_ids = [d.id for d in devices]
+    # One query: first image attachment per device (ordered by created_at)
+    thumb_rows = (
+        db.query(Attachment.device_id, Attachment.id)
+        .filter(Attachment.device_id.in_(device_ids), Attachment.file_type.like("image/%"))
+        .order_by(Attachment.device_id, Attachment.created_at)
+        .all()
+    )
+    thumbnails: dict[str, str] = {}
+    for device_id, att_id in thumb_rows:
+        thumbnails.setdefault(device_id, att_id)
+    result = []
+    for d in devices:
+        r = DeviceRead.model_validate(d)
+        r.thumbnail_attachment_id = thumbnails.get(d.id)
+        result.append(r)
+    return result
 
 
 @router.post("", response_model=DeviceRead, status_code=201)
@@ -224,7 +244,15 @@ def get_device(device_id: str, db: Session = Depends(get_db)):
     device = db.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    return device
+    thumb = (
+        db.query(Attachment.id)
+        .filter(Attachment.device_id == device_id, Attachment.file_type.like("image/%"))
+        .order_by(Attachment.created_at)
+        .first()
+    )
+    r = DeviceRead.model_validate(device)
+    r.thumbnail_attachment_id = thumb[0] if thumb else None
+    return r
 
 
 @router.put("/{device_id}", response_model=DeviceRead)
