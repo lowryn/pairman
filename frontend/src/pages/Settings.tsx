@@ -1,11 +1,156 @@
-import { getBackupUrl } from '../services/api'
+import { useEffect, useState } from 'react'
+import { Trash2, Plus } from 'lucide-react'
+import {
+  getHomes, createHome, deleteHome,
+  getRooms, createRoom, deleteRoom,
+  getManufacturers, createManufacturer, deleteManufacturer,
+  getBackupUrl,
+} from '../services/api'
+import type { Home, Room, Manufacturer } from '../types'
 
 export default function Settings() {
+  const [homes, setHomes] = useState<Home[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
+
+  const [newHome, setNewHome] = useState('')
+  const [newRoom, setNewRoom] = useState('')
+  const [newRoomHome, setNewRoomHome] = useState('')
+  const [newMfr, setNewMfr] = useState('')
+
+  const reload = () => {
+    getHomes().then(h => { setHomes(h); if (!newRoomHome && h.length) setNewRoomHome(h[0].id) })
+    getRooms().then(setRooms)
+    getManufacturers().then(setManufacturers)
+  }
+
+  useEffect(() => { reload() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addHome = async () => {
+    const name = newHome.trim()
+    if (!name) return
+    await createHome({ name })
+    setNewHome('')
+    reload()
+  }
+
+  const addRoom = async () => {
+    const name = newRoom.trim()
+    if (!name || !newRoomHome) return
+    await createRoom({ name, home_id: newRoomHome })
+    setNewRoom('')
+    reload()
+  }
+
+  const addMfr = async () => {
+    const name = newMfr.trim()
+    if (!name) return
+    await createManufacturer({ name })
+    setNewMfr('')
+    reload()
+  }
+
+  const homeById = (id: string) => homes.find(h => h.id === id)?.name ?? id
+
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-      <div className="bg-white border rounded-xl divide-y">
+      <div className="flex flex-col gap-4">
+        {/* Homes */}
+        <Section title="Homes">
+          <ul className="divide-y mb-3">
+            {homes.length === 0 && <li className="py-2 text-sm text-gray-400">No homes yet</li>}
+            {homes.map(h => (
+              <li key={h.id} className="flex items-center justify-between py-2">
+                <span className="text-sm">{h.name}</span>
+                <button onClick={() => deleteHome(h.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                  <Trash2 size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2">
+            <input
+              className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+              placeholder="Home name"
+              value={newHome}
+              onChange={e => setNewHome(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addHome()}
+            />
+            <button onClick={addHome} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-700">
+              <Plus size={14} /> Add
+            </button>
+          </div>
+        </Section>
+
+        {/* Rooms */}
+        <Section title="Rooms">
+          <ul className="divide-y mb-3">
+            {rooms.length === 0 && <li className="py-2 text-sm text-gray-400">No rooms yet</li>}
+            {rooms.map(r => (
+              <li key={r.id} className="flex items-center justify-between py-2">
+                <span className="text-sm">{r.name} <span className="text-gray-400">— {homeById(r.home_id)}</span></span>
+                <button onClick={() => deleteRoom(r.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                  <Trash2 size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {homes.length === 0
+            ? <p className="text-sm text-gray-400">Add a home first</p>
+            : (
+              <div className="flex gap-2">
+                <select
+                  className="border rounded-lg px-2 py-1.5 text-sm"
+                  value={newRoomHome}
+                  onChange={e => setNewRoomHome(e.target.value)}
+                >
+                  {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+                <input
+                  className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+                  placeholder="Room name"
+                  value={newRoom}
+                  onChange={e => setNewRoom(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addRoom()}
+                />
+                <button onClick={addRoom} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-700">
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+            )
+          }
+        </Section>
+
+        {/* Manufacturers */}
+        <Section title="Manufacturers">
+          <ul className="divide-y mb-3">
+            {manufacturers.length === 0 && <li className="py-2 text-sm text-gray-400">No manufacturers yet</li>}
+            {manufacturers.map(m => (
+              <li key={m.id} className="flex items-center justify-between py-2">
+                <span className="text-sm">{m.name}</span>
+                <button onClick={() => deleteManufacturer(m.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                  <Trash2 size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2">
+            <input
+              className="border rounded-lg px-3 py-1.5 text-sm flex-1"
+              placeholder="Manufacturer name"
+              value={newMfr}
+              onChange={e => setNewMfr(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addMfr()}
+            />
+            <button onClick={addMfr} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-700">
+              <Plus size={14} /> Add
+            </button>
+          </div>
+        </Section>
+
+        {/* Backup */}
         <Section title="Backup & Restore">
           <a
             href={getBackupUrl()}
@@ -22,7 +167,7 @@ export default function Settings() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="p-4">
+    <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold mb-3">{title}</h2>
       {children}
     </div>

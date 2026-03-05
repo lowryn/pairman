@@ -43,7 +43,11 @@ export default function DeviceDetail() {
         <div className="bg-white border rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
           <QRCodeSVG value={qrData} size={200} />
           {device.pairing_code && (
-            <p className="font-mono text-lg tracking-widest">{device.pairing_code}</p>
+            <p className="font-mono text-lg tracking-widest">
+            {device.pairing_code?.length === 11
+              ? `${device.pairing_code.slice(0,4)}-${device.pairing_code.slice(4,7)}-${device.pairing_code.slice(7,11)}`
+              : device.pairing_code}
+          </p>
           )}
           <a
             href={getDeviceLabelUrl(device.id)}
