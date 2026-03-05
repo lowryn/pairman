@@ -73,6 +73,14 @@ export interface DeviceCreate {
   notes?: string
 }
 
+export interface CustomField {
+  id: string
+  device_id: string
+  key: string
+  value: string
+  created_at: string
+}
+
 export interface Attachment {
   id: string
   device_id: string

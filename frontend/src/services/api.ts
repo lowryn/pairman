@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats, Attachment } from '../types'
+import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats, Attachment, CustomField } from '../types'
 
 const api = axios.create({ baseURL: '/api/v1' })
 
@@ -78,3 +78,12 @@ export const uploadAttachment = (deviceId: string, file: File, description?: str
 }
 export const deleteAttachment = (id: string) => api.delete(`/attachments/${id}`)
 export const getAttachmentDownloadUrl = (id: string) => `/api/v1/attachments/${id}/download`
+
+// Custom fields
+export const getCustomFields = (deviceId: string) =>
+  api.get<CustomField[]>(`/devices/${deviceId}/fields`).then(r => r.data)
+export const createCustomField = (deviceId: string, key: string, value: string) =>
+  api.post<CustomField>(`/devices/${deviceId}/fields`, { key, value }).then(r => r.data)
+export const updateCustomField = (id: string, key: string, value: string) =>
+  api.put<CustomField>(`/fields/${id}`, { key, value }).then(r => r.data)
+export const deleteCustomField = (id: string) => api.delete(`/fields/${id}`)

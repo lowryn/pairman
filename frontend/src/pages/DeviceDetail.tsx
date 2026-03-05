@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload } from 'lucide-react'
-import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl } from '../services/api'
-import type { Device, Attachment } from '../types'
+import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check } from 'lucide-react'
+import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField } from '../services/api'
+import type { Device, Attachment, CustomField } from '../types'
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -24,11 +24,15 @@ export default function DeviceDetail() {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [fields, setFields] = useState<CustomField[]>([])
+  const [editingField, setEditingField] = useState<{ id: string; key: string; value: string } | null>(null)
+  const [newField, setNewField] = useState<{ key: string; value: string } | null>(null)
 
   useEffect(() => {
     if (id) {
       getDevice(id).then(setDevice)
       getAttachments(id).then(setAttachments)
+      getCustomFields(id).then(setFields)
     }
   }, [id])
 
@@ -48,6 +52,25 @@ export default function DeviceDetail() {
   const handleDeleteAttachment = async (attId: string) => {
     await deleteAttachment(attId)
     setAttachments(prev => prev.filter(a => a.id !== attId))
+  }
+
+  const saveNewField = async () => {
+    if (!newField || !id || !newField.key.trim()) return
+    const f = await createCustomField(id, newField.key.trim(), newField.value.trim())
+    setFields(prev => [...prev, f])
+    setNewField(null)
+  }
+
+  const saveEditField = async () => {
+    if (!editingField) return
+    const f = await updateCustomField(editingField.id, editingField.key.trim(), editingField.value.trim())
+    setFields(prev => prev.map(x => x.id === f.id ? f : x))
+    setEditingField(null)
+  }
+
+  const handleDeleteField = async (fieldId: string) => {
+    await deleteCustomField(fieldId)
+    setFields(prev => prev.filter(f => f.id !== fieldId))
   }
 
   const handleDelete = async () => {
@@ -119,6 +142,92 @@ export default function DeviceDetail() {
             <p className="text-gray-500 mb-1">Notes</p>
             <p className="whitespace-pre-wrap">{device.notes}</p>
           </div>
+        )}
+      </div>
+
+      {/* Custom Fields */}
+      <div className="bg-white border rounded-xl mt-4">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <h2 className="font-semibold">Custom Fields</h2>
+          <button
+            onClick={() => { setNewField({ key: '', value: '' }); setEditingField(null) }}
+            className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg"
+          >
+            <Plus size={14} /> Add
+          </button>
+        </div>
+
+        {fields.length === 0 && !newField ? (
+          <p className="px-4 py-4 text-sm text-gray-400">No custom fields yet.</p>
+        ) : (
+          <ul className="divide-y">
+            {fields.map(f => (
+              <li key={f.id} className="flex items-center gap-2 px-4 py-2">
+                {editingField?.id === f.id ? (
+                  <>
+                    <input
+                      className="border rounded px-2 py-1 text-sm w-32 shrink-0"
+                      value={editingField.key}
+                      onChange={e => setEditingField({ ...editingField, key: e.target.value })}
+                      onKeyDown={e => e.key === 'Enter' && saveEditField()}
+                    />
+                    <input
+                      className="border rounded px-2 py-1 text-sm flex-1"
+                      value={editingField.value}
+                      onChange={e => setEditingField({ ...editingField, value: e.target.value })}
+                      onKeyDown={e => e.key === 'Enter' && saveEditField()}
+                      autoFocus
+                    />
+                    <button onClick={saveEditField} className="p-1.5 text-green-600 hover:text-green-800">
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => setEditingField(null)} className="p-1.5 text-gray-400 hover:text-gray-600">
+                      <X size={15} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-500 w-32 shrink-0 truncate">{f.key}</span>
+                    <span className="text-sm flex-1 truncate">{f.value}</span>
+                    <button
+                      onClick={() => { setEditingField({ id: f.id, key: f.key, value: f.value }); setNewField(null) }}
+                      className="p-1.5 text-gray-400 hover:text-gray-700"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => handleDeleteField(f.id)} className="p-1.5 text-gray-400 hover:text-red-500">
+                      <X size={15} />
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+            {newField && (
+              <li className="flex items-center gap-2 px-4 py-2">
+                <input
+                  className="border rounded px-2 py-1 text-sm w-32 shrink-0"
+                  placeholder="Key"
+                  value={newField.key}
+                  onChange={e => setNewField({ ...newField, key: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && saveNewField()}
+                  autoFocus
+                />
+                <input
+                  className="border rounded px-2 py-1 text-sm flex-1"
+                  placeholder="Value"
+                  value={newField.value}
+                  onChange={e => setNewField({ ...newField, value: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && saveNewField()}
+                />
+                <button onClick={saveNewField} className="p-1.5 text-green-600 hover:text-green-800">
+                  <Check size={15} />
+                </button>
+                <button onClick={() => setNewField(null)} className="p-1.5 text-gray-400 hover:text-gray-600">
+                  <X size={15} />
+                </button>
+              </li>
+            )}
+          </ul>
         )}
       </div>
 
