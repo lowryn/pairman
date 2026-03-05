@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Trash2, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Trash2, Plus, Upload } from 'lucide-react'
 import {
   getHomes, createHome, deleteHome,
   getRooms, createRoom, deleteRoom,
   getManufacturers, createManufacturer, deleteManufacturer,
+  getExportUrl, importDevices,
   getBackupUrl,
 } from '../services/api'
 import type { Home, Room, Manufacturer } from '../types'
@@ -17,6 +18,8 @@ export default function Settings() {
   const [newRoom, setNewRoom] = useState('')
   const [newRoomHome, setNewRoomHome] = useState('')
   const [newMfr, setNewMfr] = useState('')
+  const [importStatus, setImportStatus] = useState<string>('')
+  const importRef = useRef<HTMLInputElement>(null)
 
   const reload = () => {
     getHomes().then(h => { setHomes(h); if (!newRoomHome && h.length) setNewRoomHome(h[0].id) })
@@ -148,6 +151,54 @@ export default function Settings() {
               <Plus size={14} /> Add
             </button>
           </div>
+        </Section>
+
+        {/* Import / Export */}
+        <Section title="Import & Export">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <a
+              href={getExportUrl('json')}
+              download="pairman-export.json"
+              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              Export JSON
+            </a>
+            <a
+              href={getExportUrl('csv')}
+              download="pairman-export.csv"
+              className="inline-block bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              Export CSV
+            </a>
+            <button
+              onClick={() => importRef.current?.click()}
+              className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              <Upload size={14} /> Import CSV / JSON
+            </button>
+            <input
+              ref={importRef}
+              type="file"
+              accept=".csv,.json"
+              className="hidden"
+              onChange={async e => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setImportStatus('Importing…')
+                try {
+                  const result = await importDevices(file)
+                  setImportStatus(`Done — ${result.imported} imported, ${result.skipped} skipped.`)
+                } catch {
+                  setImportStatus('Import failed. Check the file format.')
+                }
+                if (importRef.current) importRef.current.value = ''
+              }}
+            />
+          </div>
+          {importStatus && <p className="text-sm text-gray-600">{importStatus}</p>}
+          <p className="text-xs text-gray-400 mt-1">
+            CSV/JSON must have columns: name, home, room, manufacturer, model, device_type, protocol, pairing_code, qr_code_data…
+          </p>
         </Section>
 
         {/* Backup */}

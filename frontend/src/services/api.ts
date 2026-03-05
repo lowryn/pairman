@@ -48,5 +48,13 @@ export const getLabelSheetUrl = (params?: Record<string, string>) => {
 export const decodePayload = (payload: string) =>
   api.post<DecodeResult>('/scan/decode', { payload }).then(r => r.data)
 
+// Import / Export
+export const getExportUrl = (format: 'json' | 'csv') => `/api/v1/devices/export?format=${format}`
+export const importDevices = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<{ imported: number; skipped: number }>('/devices/import', form).then(r => r.data)
+}
+
 // Backup
 export const getBackupUrl = () => '/api/v1/backup'
