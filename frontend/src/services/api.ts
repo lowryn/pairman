@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats } from '../types'
+import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats, Attachment } from '../types'
 
 const api = axios.create({ baseURL: '/api/v1' })
 
@@ -66,3 +66,15 @@ export const restoreBackup = (file: File) => {
 
 // Stats
 export const getStats = () => api.get<DashboardStats>('/stats').then(r => r.data)
+
+// Attachments
+export const getAttachments = (deviceId: string) =>
+  api.get<Attachment[]>(`/devices/${deviceId}/attachments`).then(r => r.data)
+export const uploadAttachment = (deviceId: string, file: File, description?: string) => {
+  const form = new FormData()
+  form.append('file', file)
+  if (description) form.append('description', description)
+  return api.post<Attachment>(`/devices/${deviceId}/attachments`, form).then(r => r.data)
+}
+export const deleteAttachment = (id: string) => api.delete(`/attachments/${id}`)
+export const getAttachmentDownloadUrl = (id: string) => `/api/v1/attachments/${id}/download`

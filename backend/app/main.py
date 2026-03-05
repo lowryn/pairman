@@ -7,7 +7,7 @@ from pathlib import Path
 from .config import settings
 from .database import engine, Base
 from . import models  # ensure all models are registered  # noqa: F401
-from .routers import homes, rooms, manufacturers, devices, scan, labels, backup, stats
+from .routers import homes, rooms, manufacturers, devices, scan, labels, backup, stats, attachments
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(labels.router, prefix=API_PREFIX)
 app.include_router(scan.router, prefix=API_PREFIX)
 app.include_router(backup.router, prefix=API_PREFIX)
 app.include_router(stats.router, prefix=API_PREFIX)
+app.include_router(attachments.router, prefix=API_PREFIX)
 
 # Serve built frontend (production)
 _frontend = Path(__file__).parent.parent.parent / "frontend" / "dist"

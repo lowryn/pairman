@@ -73,6 +73,16 @@ export interface DeviceCreate {
   notes?: string
 }
 
+export interface Attachment {
+  id: string
+  device_id: string
+  filename: string
+  file_type: string
+  file_size: number
+  description?: string
+  created_at: string
+}
+
 export interface DashboardStats {
   total_devices: number
   total_homes: number
