@@ -154,7 +154,7 @@ export default function AddDevice() {
                 onClick={() => setInputMode(mode)}
                 className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border text-sm font-medium transition-colors ${
                   inputMode === mode
-                    ? 'bg-blue-50 border-blue-400 text-blue-700'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 text-blue-700 dark:text-blue-400'
                     : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
@@ -204,7 +204,7 @@ export default function AddDevice() {
 
           {/* Scan result badge */}
           {scanBadge && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+            <div className="mt-3 flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg">
               <CheckCircle size={16} />
               {scanBadge}
             </div>
