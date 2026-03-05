@@ -13,7 +13,7 @@ export default function App() {
     <BrowserRouter>
       <Layout>
         <Routes>
-          <Route path="/" element={<Navigate to="/devices" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/devices" element={<DeviceList />} />
           <Route path="/devices/new" element={<AddDevice />} />
           <Route path="/devices/:id" element={<DeviceDetail />} />

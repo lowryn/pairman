@@ -66,6 +66,20 @@ export interface DeviceCreate {
   notes?: string
 }
 
+export interface DashboardStats {
+  total_devices: number
+  total_homes: number
+  total_rooms: number
+  by_home: Array<{
+    home_id: string
+    home_name: string
+    count: number
+    rooms: Array<{ room_id: string; room_name: string; count: number }>
+  }>
+  by_protocol: Array<{ protocol: string; count: number }>
+  by_device_type: Array<{ device_type: string; count: number }>
+}
+
 export interface DecodeResult {
   protocol: string
   raw: string

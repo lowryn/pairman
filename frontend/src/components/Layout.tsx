@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Tag, Settings, Plus } from 'lucide-react'
+import { LayoutGrid, Tag, Settings, Plus, LayoutDashboard } from 'lucide-react'
 
 const navItems = [
-  { to: '/devices', icon: LayoutGrid, label: 'Devices' },
-  { to: '/labels', icon: Tag, label: 'Labels' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/devices',   icon: LayoutGrid,      label: 'Devices'   },
+  { to: '/labels',    icon: Tag,             label: 'Labels'    },
+  { to: '/settings',  icon: Settings,        label: 'Settings'  },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {

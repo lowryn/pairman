@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult } from '../types'
+import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats } from '../types'
 
 const api = axios.create({ baseURL: '/api/v1' })
 
@@ -58,3 +58,6 @@ export const importDevices = (file: File) => {
 
 // Backup
 export const getBackupUrl = () => '/api/v1/backup'
+
+// Stats
+export const getStats = () => api.get<DashboardStats>('/stats').then(r => r.data)
