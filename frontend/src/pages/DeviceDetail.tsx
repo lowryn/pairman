@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check } from 'lucide-react'
+import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check, ShieldAlert, AlertTriangle } from 'lucide-react'
 import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField, getTags, setDeviceTags } from '../services/api'
 import type { Device, Attachment, CustomField } from '../types'
 
@@ -30,10 +30,16 @@ export default function DeviceDetail() {
   const [tags, setTags] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
+  const [warrantyDismissed, setWarrantyDismissed] = useState(false)
 
   useEffect(() => {
     if (id) {
-      getDevice(id).then(d => { setDevice(d); setTags(d.tags) })
+      getDevice(id).then(d => {
+        setDevice(d)
+        setTags(d.tags)
+        const key = `warranty_dismissed_${id}`
+        setWarrantyDismissed(localStorage.getItem(key) === d.warranty_expiry)
+      })
       getAttachments(id).then(setAttachments)
       getCustomFields(id).then(setFields)
       getTags().then(setAllTags)
@@ -92,6 +98,12 @@ export default function DeviceDetail() {
     setFields(prev => prev.filter(f => f.id !== fieldId))
   }
 
+  const dismissWarranty = () => {
+    if (!id || !device?.warranty_expiry) return
+    localStorage.setItem(`warranty_dismissed_${id}`, device.warranty_expiry)
+    setWarrantyDismissed(true)
+  }
+
   const handleDelete = async () => {
     if (!id || !confirm('Delete this device?')) return
     await deleteDevice(id)
@@ -116,6 +128,48 @@ export default function DeviceDetail() {
           <Trash2 size={18} />
         </button>
       </div>
+
+      {(() => {
+        if (!device.warranty_expiry || warrantyDismissed) return null
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const exp = new Date(device.warranty_expiry)
+        const soon = new Date(today); soon.setDate(soon.getDate() + 30)
+        const expired = exp < today
+        const expiringSoon = !expired && exp <= soon
+        if (!expired && !expiringSoon) return null
+        return (
+          <div className={`flex items-start justify-between gap-3 rounded-xl p-4 mb-4 ${
+            expired
+              ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+          }`}>
+            <div className="flex items-start gap-2">
+              {expired
+                ? <ShieldAlert size={18} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                : <AlertTriangle size={18} className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+              }
+              <div>
+                <p className={`text-sm font-semibold ${expired ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                  {expired ? 'Warranty Expired' : 'Warranty Expiring Soon'}
+                </p>
+                <p className={`text-xs mt-0.5 ${expired ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}>
+                  {expired ? `Expired on ${device.warranty_expiry}` : `Expires on ${device.warranty_expiry}`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={dismissWarranty}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg shrink-0 ${
+                expired
+                  ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
+                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60'
+              }`}
+            >
+              Acknowledge
+            </button>
+          </div>
+        )
+      })()}
 
       {qrData && (
         <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
@@ -154,18 +208,6 @@ export default function DeviceDetail() {
             <span className="text-gray-500 dark:text-gray-400 w-36 shrink-0">{label}</span>
             {label === 'Admin URL'
               ? <a href={value as string} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate">{value as string}</a>
-              : label === 'Warranty Expires'
-              ? (() => {
-                  const today = new Date(); today.setHours(0,0,0,0)
-                  const d = new Date(value as string)
-                  const soon = new Date(today); soon.setDate(soon.getDate() + 30)
-                  const cls = d < today
-                    ? 'text-red-600 dark:text-red-400 font-medium'
-                    : d <= soon
-                    ? 'text-amber-600 dark:text-amber-400 font-medium'
-                    : 'dark:text-gray-100'
-                  return <span className={cls}>{value as string}</span>
-                })()
               : <span className="dark:text-gray-100">{value as string}</span>
             }
           </div>

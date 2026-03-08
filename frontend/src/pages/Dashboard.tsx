@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { QrCode, Plus, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { QrCode, Plus } from 'lucide-react'
 import { getStats } from '../services/api'
-import type { DashboardStats, WarrantyAlert } from '../types'
+import type { DashboardStats } from '../types'
 
 const PROTOCOL_COLOURS: Record<string, { badge: string; bar: string }> = {
   Matter:    { badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', bar: 'bg-violet-500' },
@@ -23,8 +23,7 @@ export default function Dashboard() {
 
   if (!stats) return <div className="p-8 text-gray-400">Loading…</div>
 
-  const { total_devices, total_homes, total_rooms, by_home, by_protocol, by_device_type, warranty_expired, warranty_expiring_soon } = stats
-  const hasWarnings = warranty_expired.length > 0 || warranty_expiring_soon.length > 0
+  const { total_devices, total_homes, total_rooms, by_home, by_protocol, by_device_type } = stats
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -45,42 +44,6 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Rooms</p>
         </div>
       </div>
-
-      {/* Warranty alerts */}
-      {hasWarnings && (
-        <div className="mb-6 flex flex-col gap-3">
-          {warranty_expired.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-              <h2 className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-400 mb-2">
-                <ShieldAlert size={16} /> Warranty Expired
-              </h2>
-              <ul className="space-y-1">
-                {warranty_expired.map((d: WarrantyAlert) => (
-                  <li key={d.id} className="flex items-center justify-between text-sm">
-                    <Link to={`/devices/${d.id}`} className="text-red-700 dark:text-red-300 hover:underline">{d.name}</Link>
-                    <span className="text-red-500 dark:text-red-400 text-xs">{d.warranty_expiry}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {warranty_expiring_soon.length > 0 && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-              <h2 className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-400 mb-2">
-                <AlertTriangle size={16} /> Expiring Within 30 Days
-              </h2>
-              <ul className="space-y-1">
-                {warranty_expiring_soon.map((d: WarrantyAlert) => (
-                  <li key={d.id} className="flex items-center justify-between text-sm">
-                    <Link to={`/devices/${d.id}`} className="text-amber-700 dark:text-amber-300 hover:underline">{d.name}</Link>
-                    <span className="text-amber-500 dark:text-amber-400 text-xs">{d.warranty_expiry}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
 
       {total_devices === 0 ? (
         <div className="text-center py-16 text-gray-400">
