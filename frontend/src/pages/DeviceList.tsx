@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle } from 'lucide-react'
-import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl, getTags } from '../services/api'
+import { Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle, Trash2, CheckSquare } from 'lucide-react'
+import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl, getTags, deleteDevice } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -43,6 +43,9 @@ export default function DeviceList() {
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   const [search, setSearch] = useState('')
   const [homeFilter, setHomeFilter] = useState('')
@@ -82,6 +85,25 @@ export default function DeviceList() {
     setHomeFilter(''); setRoomFilter(''); setProtocolFilter(''); setTypeFilter(''); setMfrFilter(''); setTagFilter('')
   }
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()) }
+
+  const bulkDelete = async () => {
+    if (!selected.size || !confirm(`Delete ${selected.size} device${selected.size !== 1 ? 's' : ''}?`)) return
+    setDeleting(true)
+    await Promise.all([...selected].map(id => deleteDevice(id)))
+    setDevices(prev => prev.filter(d => !selected.has(d.id)))
+    exitSelectMode()
+    setDeleting(false)
+  }
+
   const roomName = (id?: string) => allRooms.find(r => r.id === id)?.name
   const mfrName  = (id?: string) => manufacturers.find(m => m.id === id)?.name
   const homeName = (id?: string) => homes.find(h => h.id === id)?.name
@@ -92,12 +114,34 @@ export default function DeviceList() {
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold dark:text-gray-100">Devices</h1>
-        <Link
-          to="/devices/new"
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={16} /> Add Device
-        </Link>
+        <div className="flex items-center gap-2">
+          {selectMode ? (
+            <button onClick={exitSelectMode} className="text-sm px-3 py-2 rounded-lg border dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+              Cancel
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <CheckSquare size={15} /> Select
+              </button>
+              <Link
+                to="/devices/bulk-add"
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Plus size={15} /> Bulk Add
+              </Link>
+              <Link
+                to="/devices/new"
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                <Plus size={16} /> Add Device
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Search + filter toggle */}
@@ -192,8 +236,12 @@ export default function DeviceList() {
         {devices.map(device => (
           <div
             key={device.id}
-            onClick={() => navigate(`/devices/${device.id}`)}
-            className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => selectMode ? toggleSelect(device.id) : navigate(`/devices/${device.id}`)}
+            className={`bg-white dark:bg-gray-900 border rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-md ${
+              selectMode && selected.has(device.id)
+                ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
+                : 'dark:border-gray-700'
+            }`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -254,6 +302,23 @@ export default function DeviceList() {
           </div>
         ))}
       </div>
+
+      {selectMode && (
+        <div className="fixed bottom-16 sm:bottom-4 inset-x-0 flex justify-center px-4 z-40">
+          <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 shadow-lg rounded-xl px-4 py-3 flex items-center gap-4 w-full max-w-sm">
+            <span className="text-sm dark:text-gray-200 flex-1">
+              {selected.size} selected
+            </span>
+            <button
+              onClick={bulkDelete}
+              disabled={selected.size === 0 || deleting}
+              className="flex items-center gap-1.5 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-40"
+            >
+              <Trash2 size={15} /> {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {devices.length === 0 && (
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">
