@@ -130,11 +130,13 @@ export default function DeviceDetail() {
           ['Retailer', device.retailer],
           ['Purchase Date', device.purchase_date],
           ['Warranty Expires', device.warranty_expiry],
-          ['Admin URL', device.admin_url],
         ].filter(([, v]) => v).map(([label, value]) => (
           <div key={label as string} className="flex px-4 py-3 text-sm">
             <span className="text-gray-500 dark:text-gray-400 w-36 shrink-0">{label}</span>
-            <span className="dark:text-gray-100">{value as string}</span>
+            {label === 'Admin URL'
+              ? <a href={value as string} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate">{value as string}</a>
+              : <span className="dark:text-gray-100">{value as string}</span>
+            }
           </div>
         ))}
         {device.notes && (
