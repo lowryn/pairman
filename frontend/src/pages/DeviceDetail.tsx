@@ -173,7 +173,7 @@ export default function DeviceDetail() {
 
       {qrData && (
         <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
-          <QRCodeSVG value={qrData} size={200} />
+          <QRCodeSVG value={qrData} size={200} level="M" bgColor="#FFFFFF" fgColor="#000000" />
           {device.pairing_code && (
             <p className="font-mono text-lg tracking-widest dark:text-gray-100">
             {device.pairing_code?.length === 11
