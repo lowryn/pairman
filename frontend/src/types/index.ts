@@ -37,6 +37,7 @@ export interface Device {
   protocol?: Protocol
   pairing_code?: string
   qr_code_data?: string
+  derived_qr_data?: string
   barcode_image?: string
   setup_code_type?: SetupCodeType
   serial_number?: string

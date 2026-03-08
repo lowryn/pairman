@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check, ShieldAlert, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check, ShieldAlert, AlertTriangle, QrCode } from 'lucide-react'
 import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField, getTags, setDeviceTags } from '../services/api'
 import type { Device, Attachment, CustomField } from '../types'
 
@@ -112,7 +112,11 @@ export default function DeviceDetail() {
 
   if (!device) return <div className="p-8 text-gray-400">Loading…</div>
 
-  const qrData = device.qr_code_data || device.pairing_code
+  const qrData = device.qr_code_data || device.derived_qr_data
+  const qrDerived = !device.qr_code_data && !!device.derived_qr_data
+  const formattedPairingCode = device.pairing_code?.length === 11
+    ? `${device.pairing_code.slice(0,4)}-${device.pairing_code.slice(4,7)}-${device.pairing_code.slice(7,11)}`
+    : device.pairing_code
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -171,15 +175,27 @@ export default function DeviceDetail() {
         )
       })()}
 
-      {qrData && (
+      {(qrData || device.pairing_code) && (
         <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-6 flex flex-col items-center gap-4 mb-6">
-          <QRCodeSVG value={qrData} size={200} level="M" bgColor="#FFFFFF" fgColor="#000000" />
-          {device.pairing_code && (
-            <p className="font-mono text-lg tracking-widest dark:text-gray-100">
-            {device.pairing_code?.length === 11
-              ? `${device.pairing_code.slice(0,4)}-${device.pairing_code.slice(4,7)}-${device.pairing_code.slice(7,11)}`
-              : device.pairing_code}
-          </p>
+          {qrData ? (
+            <>
+              <QRCodeSVG value={qrData} size={200} level="M" bgColor="#FFFFFF" fgColor="#000000" />
+              {qrDerived && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center max-w-56">
+                  Reconstructed from pairing code — VID/PID unknown, discriminator approximate
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <QrCode size={40} className="text-gray-300 dark:text-gray-600" />
+              <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-48">
+                QR code not available. Use the pairing code below.
+              </p>
+            </div>
+          )}
+          {formattedPairingCode && (
+            <p className="font-mono text-lg tracking-widest dark:text-gray-100">{formattedPairingCode}</p>
           )}
           <a
             href={getDeviceLabelUrl(device.id)}

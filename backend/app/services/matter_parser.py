@@ -58,6 +58,76 @@ def _manual_pairing_code(passcode: int, discriminator: int, custom_flow: int) ->
     return digits + str(check)
 
 
+def _set_bits(data: bytearray, start: int, length: int, value: int) -> None:
+    """Set `length` bits starting at bit `start` in a little-endian byte array."""
+    for i in range(length):
+        bp = start + i
+        if (value >> i) & 1:
+            data[bp // 8] |= (1 << (bp % 8))
+        else:
+            data[bp // 8] &= ~(1 << (bp % 8))
+
+
+def _base38_encode_chunk(val: int, length: int) -> str:
+    result = []
+    for _ in range(length):
+        result.append(BASE38_CHARS[val % 38])
+        val //= 38
+    return ''.join(result)
+
+
+def _base38_encode_bytes(data: bytes) -> str:
+    out = []
+    i = 0
+    while i + 3 <= len(data):
+        v = data[i] | (data[i + 1] << 8) | (data[i + 2] << 16)
+        out.append(_base38_encode_chunk(v, 5))
+        i += 3
+    if i + 2 == len(data):
+        v = data[i] | (data[i + 1] << 8)
+        out.append(_base38_encode_chunk(v, 4))
+    return ''.join(out)
+
+
+def pairing_code_to_qr_payload(pairing_code: str) -> str | None:
+    """
+    Reconstruct a best-effort Matter QR payload (MT:...) from an 11-digit
+    manual pairing code.
+
+    Limitations: VID/PID are 0 and the lower 8 bits of the 12-bit
+    discriminator are unknown (set to 0).  The passcode is exact.
+    The QR will not auto-discover a device via BLE (wrong full discriminator)
+    but encodes the correct passcode for manual entry.
+    """
+    digits = pairing_code.replace('-', '').replace(' ', '')
+    if not digits.isdigit() or len(digits) != 11:
+        return None
+    if str(_verhoeff_check(digits[:-1])) != digits[-1]:
+        return None  # bad check digit
+
+    chunk1 = int(digits[0])
+    chunk2 = int(digits[1:6])
+    chunk3 = int(digits[6:10])
+
+    disc_msb2 = chunk1 & 0x3
+    disc_lsb2 = (chunk2 >> 14) & 0x3
+    short_disc = (disc_msb2 << 2) | disc_lsb2
+    passcode = (chunk2 & 0x3FFF) | (chunk3 << 14)
+
+    # Build the 88-bit Matter QR payload
+    discriminator = short_disc << 8   # lower 8 bits unknown, set to 0
+    raw = bytearray(11)
+    _set_bits(raw, 0,  3,  0)             # version
+    _set_bits(raw, 3,  16, 0)             # vendor_id
+    _set_bits(raw, 19, 16, 0)             # product_id
+    _set_bits(raw, 35, 2,  0)             # custom_flow
+    _set_bits(raw, 37, 8,  4)             # discovery_capabilities = BLE
+    _set_bits(raw, 45, 12, discriminator)
+    _set_bits(raw, 57, 27, passcode)
+
+    return MATTER_PREFIX + _base38_encode_bytes(bytes(raw))
+
+
 def _base38_decode_chunk(s: str) -> int:
     """Decode a single Base38 chunk (LSB-first within the chunk)."""
     val = 0

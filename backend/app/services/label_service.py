@@ -9,6 +9,7 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
 from .qr_service import generate_qr_png
+from .matter_parser import pairing_code_to_qr_payload
 
 
 @dataclass
@@ -75,7 +76,9 @@ def _draw_label(c: rl_canvas.Canvas, x: float, y: float, device, tpl: LabelTempl
     lw = tpl.label_w * mm
     lh = tpl.label_h * mm
 
-    qr_data = device.qr_code_data or device.pairing_code
+    qr_data = device.qr_code_data or (
+        pairing_code_to_qr_payload(device.pairing_code) if device.pairing_code else None
+    )
 
     # QR code — capped at 48% of label width so text area always has space
     qr_size = min(lh - 4 * mm, lw * 0.48)

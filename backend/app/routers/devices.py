@@ -14,6 +14,14 @@ from ..models.tag import Tag
 from ..schemas import DeviceCreate, DeviceUpdate, DeviceRead
 from ..services.qr_service import generate_qr_png
 from ..services.label_service import generate_single_label
+from ..services.matter_parser import pairing_code_to_qr_payload
+
+
+def _enrich(r: DeviceRead, device: Device) -> DeviceRead:
+    """Populate computed fields not on the ORM model."""
+    if not device.qr_code_data and device.pairing_code:
+        r.derived_qr_data = pairing_code_to_qr_payload(device.pairing_code)
+    return r
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -231,6 +239,7 @@ def list_devices(
         r = DeviceRead.model_validate(d)
         r.thumbnail_attachment_id = thumbnails.get(d.id)
         r.tags = sorted(t.name for t in d.tags)
+        _enrich(r, d)
         result.append(r)
     return result
 
@@ -258,7 +267,7 @@ def get_device(device_id: str, db: Session = Depends(get_db)):
     r = DeviceRead.model_validate(device)
     r.thumbnail_attachment_id = thumb[0] if thumb else None
     r.tags = sorted(t.name for t in device.tags)
-    return r
+    return _enrich(r, device)
 
 
 @router.put("/{device_id}", response_model=DeviceRead)
@@ -287,7 +296,9 @@ def get_device_qr(device_id: str, db: Session = Depends(get_db)):
     device = db.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    data = device.qr_code_data or device.pairing_code
+    data = device.qr_code_data or (
+        pairing_code_to_qr_payload(device.pairing_code) if device.pairing_code else None
+    )
     if not data:
         raise HTTPException(status_code=422, detail="Device has no QR or pairing code data")
     png = generate_qr_png(data)
