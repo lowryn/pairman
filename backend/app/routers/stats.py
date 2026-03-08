@@ -3,16 +3,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Device, Home, Room
+from ..models import Device, Home, Room, Manufacturer
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
 @router.get("")
 def get_stats(db: Session = Depends(get_db)):
-    devices = db.query(Device).all()
-    homes   = db.query(Home).all()
-    rooms   = db.query(Room).all()
+    devices       = db.query(Device).all()
+    homes         = db.query(Home).all()
+    rooms         = db.query(Room).all()
+    manufacturers = db.query(Manufacturer).all()
 
     home_counts: dict[str, int] = {}
     room_counts: dict[str, int] = {}
@@ -58,10 +59,22 @@ def get_stats(db: Session = Depends(get_db)):
         elif d.warranty_expiry <= soon:
             warranty_expiring_soon.append(entry)
 
+    recently_added = sorted(devices, key=lambda d: d.created_at, reverse=True)[:5]
+
     return {
-        "total_devices": len(devices),
-        "total_homes":   len(homes),
-        "total_rooms":   len(rooms),
+        "total_devices":       len(devices),
+        "total_homes":         len(homes),
+        "total_rooms":         len(rooms),
+        "total_manufacturers": len(manufacturers),
+        "recently_added": [
+            {
+                "id":          d.id,
+                "name":        d.name,
+                "protocol":    d.protocol,
+                "device_type": d.device_type,
+            }
+            for d in recently_added
+        ],
         "by_home": by_home,
         "by_protocol": [
             {"protocol": k, "count": v}

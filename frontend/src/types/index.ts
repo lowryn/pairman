@@ -103,6 +103,8 @@ export interface DashboardStats {
   total_devices: number
   total_homes: number
   total_rooms: number
+  total_manufacturers: number
+  recently_added: Array<{ id: string; name: string; protocol?: string; device_type?: string }>
   by_home: Array<{
     home_id: string
     home_name: string

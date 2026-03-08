@@ -1,8 +1,55 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle, Trash2, CheckSquare } from 'lucide-react'
+import {
+  Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle,
+  Trash2, CheckSquare, Layers, MapPin,
+  Lightbulb, ToggleRight, Plug, Sliders, Activity, Thermometer, Lock,
+  Camera, BellRing, Volume2, Wind, Network, Flame, Eye, Droplets,
+  Shield, Tv2, Bot, Box, Gauge, Gamepad2, Car, AlignJustify,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl, getTags, deleteDevice } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
+
+const DEVICE_TYPE_ICONS: Record<string, LucideIcon> = {
+  'Light':              Lightbulb,
+  'Switch':             ToggleRight,
+  'Plug':               Plug,
+  'Dimmer':             Sliders,
+  'Sensor':             Activity,
+  'Thermostat':         Thermometer,
+  'Lock':               Lock,
+  'Camera':             Camera,
+  'Doorbell':           BellRing,
+  'Speaker':            Volume2,
+  'Blind/Shade':        AlignJustify,
+  'Fan':                Wind,
+  'Garage Door':        Car,
+  'Bridge/Hub':         Network,
+  'Remote/Button':      Gamepad2,
+  'Air Purifier':       Wind,
+  'Smoke Detector':     Flame,
+  'CO2 Detector':       Gauge,
+  'Motion Sensor':      Eye,
+  'Contact Sensor':     Eye,
+  'Water Leak Sensor':  Droplets,
+  'Security System':    Shield,
+  'TV/Display':         Tv2,
+  'Robot Vacuum':       Bot,
+  'Other':              Box,
+}
+
+type GroupBy = '' | 'home' | 'room' | 'protocol' | 'device_type' | 'manufacturer' | 'tag'
+
+const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
+  { value: '',            label: 'No grouping' },
+  { value: 'home',        label: 'Home' },
+  { value: 'room',        label: 'Room' },
+  { value: 'device_type', label: 'Device Type' },
+  { value: 'protocol',    label: 'Protocol' },
+  { value: 'manufacturer',label: 'Manufacturer' },
+  { value: 'tag',         label: 'Tag' },
+]
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
 const DEVICE_TYPES = [
@@ -104,9 +151,109 @@ export default function DeviceList() {
     setDeleting(false)
   }
 
+  const [groupBy, setGroupBy] = useState<GroupBy>('')
+
   const roomName = (id?: string) => allRooms.find(r => r.id === id)?.name
   const mfrName  = (id?: string) => manufacturers.find(m => m.id === id)?.name
   const homeName = (id?: string) => homes.find(h => h.id === id)?.name
+
+  const grouped = (() => {
+    if (!groupBy) return null
+    const map = new Map<string, Device[]>()
+    for (const d of devices) {
+      let keys: string[]
+      if (groupBy === 'home')         keys = [homeName(d.home_id) || 'Unassigned']
+      else if (groupBy === 'room')    keys = [roomName(d.room_id) || 'Unassigned']
+      else if (groupBy === 'protocol')     keys = [d.protocol || 'Unknown']
+      else if (groupBy === 'device_type')  keys = [d.device_type || 'Unknown']
+      else if (groupBy === 'manufacturer') keys = [mfrName(d.manufacturer_id) || 'Unknown']
+      else keys = d.tags.length ? d.tags : ['Untagged']
+
+      for (const key of keys) {
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(d)
+      }
+    }
+    // Sort groups alphabetically, but push fallback labels to the end
+    const fallbacks = new Set(['Unassigned', 'Unknown', 'Untagged'])
+    return [...map.entries()]
+      .sort(([a], [b]) => {
+        const af = fallbacks.has(a), bf = fallbacks.has(b)
+        if (af !== bf) return af ? 1 : -1
+        return a.localeCompare(b)
+      })
+      .map(([label, devices]) => ({ label, devices }))
+  })()
+
+  const DeviceCard = ({ device }: { device: Device }) => (
+    <div
+      onClick={() => selectMode ? toggleSelect(device.id) : navigate(`/devices/${device.id}`)}
+      className={`bg-white dark:bg-gray-900 border rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-md ${
+        selectMode && selected.has(device.id)
+          ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
+          : 'dark:border-gray-700'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold truncate dark:text-gray-100">{device.name}</h2>
+          {device.model && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{device.model}</p>}
+          {!device.model && mfrName(device.manufacturer_id) && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName(device.manufacturer_id)}</p>
+          )}
+        </div>
+        <div className="flex items-start gap-1.5 shrink-0">
+          {warrantyStatus(device.warranty_expiry) === 'expired' && (
+            <span title="Warranty expired"><ShieldAlert size={15} className="text-red-400 mt-0.5" /></span>
+          )}
+          {warrantyStatus(device.warranty_expiry) === 'soon' && (
+            <span title="Warranty expiring soon"><AlertTriangle size={15} className="text-amber-400 mt-0.5" /></span>
+          )}
+          {device.device_type && DEVICE_TYPE_ICONS[device.device_type] && (() => {
+            const Icon = DEVICE_TYPE_ICONS[device.device_type!]
+            return (
+              <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg" title={device.device_type}>
+                <Icon size={16} className="text-gray-500 dark:text-gray-400" />
+              </div>
+            )
+          })()}
+          {device.thumbnail_attachment_id && (
+            <img src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)} alt="" className="w-10 h-10 object-cover rounded-lg" />
+          )}
+        </div>
+      </div>
+
+      {(device.home_id || device.room_id) && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 truncate flex items-center gap-1">
+          {roomName(device.room_id) && <MapPin size={11} className="shrink-0" />}
+          {[roomName(device.room_id), homeName(device.home_id)].filter(Boolean).join(' · ')}
+        </p>
+      )}
+
+      <div className="mt-2 flex gap-1.5 flex-wrap">
+        {device.protocol && (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PROTOCOL_COLOURS[device.protocol] ?? PROTOCOL_COLOURS.Other}`}>
+            {device.protocol}
+          </span>
+        )}
+        {device.device_type && (
+          <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
+            {device.device_type}
+          </span>
+        )}
+        {device.manufacturer_id && device.model && mfrName(device.manufacturer_id) && (
+          <span className="text-xs bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
+            {mfrName(device.manufacturer_id)}
+          </span>
+        )}
+        {device.tags.map(tag => (
+          <span key={tag} className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 
   const selectCls = 'border dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100'
 
@@ -171,6 +318,20 @@ export default function DeviceList() {
             </span>
           )}
         </button>
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 border rounded-lg text-sm transition-colors ${
+          groupBy
+            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 text-blue-700 dark:text-blue-400'
+            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+        }`}>
+          <Layers size={15} className="shrink-0" />
+          <select
+            value={groupBy}
+            onChange={e => setGroupBy(e.target.value as GroupBy)}
+            className="bg-transparent text-inherit text-sm outline-none cursor-pointer"
+          >
+            {GROUP_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
         {activeFilterCount > 0 && (
           <button onClick={clearFilters} className="flex items-center gap-1 px-2 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
             <X size={14} /> Clear
@@ -231,77 +392,28 @@ export default function DeviceList() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{devices.length} device{devices.length !== 1 ? 's' : ''} found</p>
       )}
 
-      {/* Device grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {devices.map(device => (
-          <div
-            key={device.id}
-            onClick={() => selectMode ? toggleSelect(device.id) : navigate(`/devices/${device.id}`)}
-            className={`bg-white dark:bg-gray-900 border rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-md ${
-              selectMode && selected.has(device.id)
-                ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
-                : 'dark:border-gray-700'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <h2 className="font-semibold truncate dark:text-gray-100">{device.name}</h2>
-                {device.model && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{device.model}</p>}
-                {!device.model && mfrName(device.manufacturer_id) && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName(device.manufacturer_id)}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {warrantyStatus(device.warranty_expiry) === 'expired' && (
-                  <span title="Warranty expired"><ShieldAlert size={15} className="text-red-400" /></span>
-                )}
-                {warrantyStatus(device.warranty_expiry) === 'soon' && (
-                  <span title="Warranty expiring soon"><AlertTriangle size={15} className="text-amber-400" /></span>
-                )}
-                {device.thumbnail_attachment_id
-                  ? <img
-                      src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)}
-                      alt=""
-                      className="w-12 h-12 object-cover rounded-lg"
-                    />
-                  : (device.qr_code_data || device.pairing_code) && (
-                      <QrCode size={18} className="text-gray-300 dark:text-gray-600" />
-                    )
-                }
+      {/* Device grid — flat or grouped */}
+      {grouped ? (
+        <div className="flex flex-col gap-6">
+          {grouped.map(({ label, devices: group }) => (
+            <div key={label}>
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                {label}
+                <span className="text-xs font-normal normal-case tracking-normal bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded-full">
+                  {group.length}
+                </span>
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.map(device => <DeviceCard key={device.id} device={device} />)}
               </div>
             </div>
-
-            {(device.home_id || device.room_id) && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 truncate">
-                {[homeName(device.home_id), roomName(device.room_id)].filter(Boolean).join(' · ')}
-              </p>
-            )}
-
-            <div className="mt-2 flex gap-1.5 flex-wrap">
-              {device.protocol && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PROTOCOL_COLOURS[device.protocol] ?? PROTOCOL_COLOURS.Other}`}>
-                  {device.protocol}
-                </span>
-              )}
-              {device.device_type && (
-                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
-                  {device.device_type}
-                </span>
-              )}
-              {device.manufacturer_id && device.model && mfrName(device.manufacturer_id) && (
-                <span className="text-xs bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-                  {mfrName(device.manufacturer_id)}
-                </span>
-              )}
-              {device.tags.map(tag => (
-                <span key={tag} className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {devices.map(device => <DeviceCard key={device.id} device={device} />)}
+        </div>
+      )}
 
       {selectMode && (
         <div className="fixed bottom-16 sm:bottom-4 inset-x-0 flex justify-center px-4 z-40">

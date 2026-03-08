@@ -5,6 +5,7 @@ Single labels and 16-up A4 sheets.
 import io
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
 from .qr_service import generate_qr_png
 
@@ -19,25 +20,48 @@ GAP_X = 0
 GAP_Y = 0
 
 
+def _format_pairing_code(code: str) -> str:
+    digits = code.replace('-', '').replace(' ', '')
+    if len(digits) == 11:
+        return f"{digits[:4]}-{digits[4:7]}-{digits[7:]}"
+    return code
+
+
 def _draw_label(c: rl_canvas.Canvas, x: float, y: float, device) -> None:
     qr_data = device.qr_code_data or device.pairing_code
     if qr_data:
         png = generate_qr_png(qr_data, box_size=4, border=1)
-        qr_img = io.BytesIO(png)
+        qr_img = ImageReader(io.BytesIO(png))
         qr_size = LABEL_H - 4 * mm
         c.drawImage(qr_img, x + 1 * mm, y + 2 * mm, width=qr_size, height=qr_size)
         text_x = x + qr_size + 3 * mm
     else:
         text_x = x + 2 * mm
 
+    max_w = int(x + LABEL_W - text_x) // 3  # rough char limit based on available width
+
+    # Line 1 — device name
     c.setFont("Helvetica-Bold", 6)
-    c.drawString(text_x, y + LABEL_H - 7 * mm, device.name[:22])
-    if device.model:
-        c.setFont("Helvetica", 5)
-        c.drawString(text_x, y + LABEL_H - 10.5 * mm, device.model[:26])
+    c.drawString(text_x, y + LABEL_H - 6.5 * mm, device.name[:20])
+
+    # Line 2 — manufacturer · model
+    mfr = device.manufacturer.name if device.manufacturer else None
+    line2 = " · ".join(filter(None, [mfr, device.model]))
+    if line2:
+        c.setFont("Helvetica", 4.5)
+        c.drawString(text_x, y + LABEL_H - 10 * mm, line2[:28])
+
+    # Line 3 — room · device type
+    room = device.room.name if device.room else None
+    line3 = " · ".join(filter(None, [room, device.device_type]))
+    if line3:
+        c.setFont("Helvetica", 4.5)
+        c.drawString(text_x, y + LABEL_H - 13.5 * mm, line3[:28])
+
+    # Line 4 — pairing code
     if device.pairing_code:
-        c.setFont("Courier", 5.5)
-        c.drawString(text_x, y + LABEL_H - 14 * mm, device.pairing_code[:20])
+        c.setFont("Courier", 5)
+        c.drawString(text_x, y + LABEL_H - 17 * mm, _format_pairing_code(device.pairing_code))
 
 
 def generate_single_label(device) -> bytes:
