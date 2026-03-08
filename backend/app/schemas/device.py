@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class DeviceBase(BaseModel):
@@ -57,3 +57,8 @@ class DeviceRead(DeviceBase):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator('tags', mode='before')
+    @classmethod
+    def coerce_tags(cls, v: list) -> list[str]:
+        return [t.name if hasattr(t, 'name') else t for t in v]
