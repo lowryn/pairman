@@ -88,3 +88,4 @@ class Device(Base):
     manufacturer: Mapped["Manufacturer"] = relationship("Manufacturer", back_populates="devices")
     custom_fields: Mapped[list["CustomField"]] = relationship("CustomField", back_populates="device", cascade="all, delete-orphan")
     attachments: Mapped[list["Attachment"]] = relationship("Attachment", back_populates="device", cascade="all, delete-orphan")
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="device_tags", lazy="selectin")

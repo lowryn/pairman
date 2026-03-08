@@ -49,6 +49,7 @@ export interface Device {
   notes?: string
   custom_image?: string
   thumbnail_attachment_id?: string
+  tags: string[]
   created_at: string
   updated_at: string
 }

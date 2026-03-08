@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, QrCode, SlidersHorizontal, X } from 'lucide-react'
-import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl } from '../services/api'
+import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl, getTags } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -31,6 +31,7 @@ export default function DeviceList() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [allRooms, setAllRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
   const [search, setSearch] = useState('')
@@ -39,11 +40,13 @@ export default function DeviceList() {
   const [protocolFilter, setProtocolFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [mfrFilter, setMfrFilter] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
 
   useEffect(() => {
     getHomes().then(setHomes)
     getManufacturers().then(setManufacturers)
     getRooms().then(r => setAllRooms(r))
+    getTags().then(setAllTags)
   }, [])
 
   useEffect(() => {
@@ -59,13 +62,14 @@ export default function DeviceList() {
     if (protocolFilter) params.protocol = protocolFilter
     if (typeFilter)     params.device_type = typeFilter
     if (mfrFilter)      params.manufacturer_id = mfrFilter
+    if (tagFilter)      params.tag = tagFilter
     getDevices(params).then(setDevices)
-  }, [search, homeFilter, roomFilter, protocolFilter, typeFilter, mfrFilter])
+  }, [search, homeFilter, roomFilter, protocolFilter, typeFilter, mfrFilter, tagFilter])
 
-  const activeFilterCount = [homeFilter, roomFilter, protocolFilter, typeFilter, mfrFilter].filter(Boolean).length
+  const activeFilterCount = [homeFilter, roomFilter, protocolFilter, typeFilter, mfrFilter, tagFilter].filter(Boolean).length
 
   const clearFilters = () => {
-    setHomeFilter(''); setRoomFilter(''); setProtocolFilter(''); setTypeFilter(''); setMfrFilter('')
+    setHomeFilter(''); setRoomFilter(''); setProtocolFilter(''); setTypeFilter(''); setMfrFilter(''); setTagFilter('')
   }
 
   const roomName = (id?: string) => allRooms.find(r => r.id === id)?.name
@@ -158,6 +162,13 @@ export default function DeviceList() {
               {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tag</label>
+            <select className={selectCls} value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+              <option value="">All tags</option>
+              {allTags.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
         </div>
       )}
 
@@ -216,6 +227,11 @@ export default function DeviceList() {
                   {mfrName(device.manufacturer_id)}
                 </span>
               )}
+              {device.tags.map(tag => (
+                <span key={tag} className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
         ))}

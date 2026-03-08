@@ -52,6 +52,7 @@ class DeviceRead(DeviceBase):
     barcode_image: str | None = None
     custom_image: str | None = None
     thumbnail_attachment_id: str | None = None
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
 

@@ -79,6 +79,11 @@ export const uploadAttachment = (deviceId: string, file: File, description?: str
 export const deleteAttachment = (id: string) => api.delete(`/attachments/${id}`)
 export const getAttachmentDownloadUrl = (id: string) => `/api/v1/attachments/${id}/download`
 
+// Tags
+export const getTags = () => api.get<string[]>('/tags').then(r => r.data)
+export const setDeviceTags = (deviceId: string, tags: string[]) =>
+  api.put<string[]>(`/devices/${deviceId}/tags`, { tags }).then(r => r.data)
+
 // Custom fields
 export const getCustomFields = (deviceId: string) =>
   api.get<CustomField[]>(`/devices/${deviceId}/fields`).then(r => r.data)

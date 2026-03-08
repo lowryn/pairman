@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Device, Home, Room, Manufacturer
 from ..models.attachment import Attachment
+from ..models.tag import Tag
 from ..schemas import DeviceCreate, DeviceUpdate, DeviceRead
 from ..services.qr_service import generate_qr_png
 from ..services.label_service import generate_single_label
@@ -187,6 +188,7 @@ def list_devices(
     protocol: str | None = Query(None),
     manufacturer_id: str | None = Query(None),
     search: str | None = Query(None),
+    tag: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(Device)
@@ -208,6 +210,8 @@ def list_devices(
             | Device.serial_number.ilike(like)
             | Device.pairing_code.ilike(like)
         )
+    if tag:
+        q = q.filter(Device.tags.any(Tag.name == tag))
     devices = q.order_by(Device.name).all()
     if not devices:
         return []
@@ -226,6 +230,7 @@ def list_devices(
     for d in devices:
         r = DeviceRead.model_validate(d)
         r.thumbnail_attachment_id = thumbnails.get(d.id)
+        r.tags = sorted(t.name for t in d.tags)
         result.append(r)
     return result
 
@@ -252,6 +257,7 @@ def get_device(device_id: str, db: Session = Depends(get_db)):
     )
     r = DeviceRead.model_validate(device)
     r.thumbnail_attachment_id = thumb[0] if thumb else None
+    r.tags = sorted(t.name for t in device.tags)
     return r
 
 

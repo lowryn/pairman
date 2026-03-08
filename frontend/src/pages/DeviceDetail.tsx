@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check } from 'lucide-react'
-import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField } from '../services/api'
+import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField, getTags, setDeviceTags } from '../services/api'
 import type { Device, Attachment, CustomField } from '../types'
 
 function formatBytes(bytes: number) {
@@ -27,14 +27,33 @@ export default function DeviceDetail() {
   const [fields, setFields] = useState<CustomField[]>([])
   const [editingField, setEditingField] = useState<{ id: string; key: string; value: string } | null>(null)
   const [newField, setNewField] = useState<{ key: string; value: string } | null>(null)
+  const [tags, setTags] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
 
   useEffect(() => {
     if (id) {
-      getDevice(id).then(setDevice)
+      getDevice(id).then(d => { setDevice(d); setTags(d.tags) })
       getAttachments(id).then(setAttachments)
       getCustomFields(id).then(setFields)
+      getTags().then(setAllTags)
     }
   }, [id])
+
+  const addTag = async () => {
+    const name = newTag.trim()
+    if (!name || !id || tags.includes(name)) return
+    const updated = await setDeviceTags(id, [...tags, name])
+    setTags(updated)
+    setAllTags(prev => prev.includes(name) ? prev : [...prev, name].sort())
+    setNewTag('')
+  }
+
+  const removeTag = async (name: string) => {
+    if (!id) return
+    const updated = await setDeviceTags(id, tags.filter(t => t !== name))
+    setTags(updated)
+  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -145,6 +164,38 @@ export default function DeviceDetail() {
             <p className="whitespace-pre-wrap dark:text-gray-100">{device.notes}</p>
           </div>
         )}
+      </div>
+
+      {/* Tags */}
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl mt-4 p-4">
+        <h2 className="font-semibold mb-3 dark:text-gray-100">Tags</h2>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {tags.map(tag => (
+            <span key={tag} className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-medium px-2.5 py-1 rounded-full">
+              {tag}
+              <button onClick={() => removeTag(tag)} className="hover:text-blue-900 dark:hover:text-blue-100 ml-0.5">
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+          {tags.length === 0 && <p className="text-sm text-gray-400 dark:text-gray-500">No tags yet.</p>}
+        </div>
+        <div className="flex gap-2">
+          <input
+            className="border dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="Add tag…"
+            list="tag-suggestions"
+            value={newTag}
+            onChange={e => setNewTag(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addTag()}
+          />
+          <datalist id="tag-suggestions">
+            {allTags.filter(t => !tags.includes(t)).map(t => <option key={t} value={t} />)}
+          </datalist>
+          <button onClick={addTag} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-700">
+            <Plus size={14} /> Add
+          </button>
+        </div>
       </div>
 
       {/* Custom Fields */}
