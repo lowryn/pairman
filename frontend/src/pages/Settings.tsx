@@ -9,8 +9,10 @@ import {
   getTags, renameTag, deleteTag,
 } from '../services/api'
 import type { Home, Room, Manufacturer } from '../types'
+import { useToast } from '../components/ToastProvider'
 
 export default function Settings() {
+  const toast = useToast()
   const [homes, setHomes] = useState<Home[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
@@ -22,8 +24,6 @@ export default function Settings() {
   const [newRoom, setNewRoom] = useState('')
   const [newRoomHome, setNewRoomHome] = useState('')
   const [newMfr, setNewMfr] = useState('')
-  const [importStatus, setImportStatus] = useState<string>('')
-  const [restoreStatus, setRestoreStatus] = useState<string>('')
   const importRef = useRef<HTMLInputElement>(null)
   const restoreRef = useRef<HTMLInputElement>(null)
 
@@ -34,37 +34,57 @@ export default function Settings() {
     getTags().then(setTags)
   }
 
-  const saveTagRename = async () => {
-    if (!editingTag || !editingTagValue.trim()) return
-    await renameTag(editingTag, editingTagValue.trim())
-    setEditingTag(null)
-    getTags().then(setTags)
-  }
-
   useEffect(() => { reload() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addHome = async () => {
     const name = newHome.trim()
     if (!name) return
-    await createHome({ name })
-    setNewHome('')
-    reload()
+    try {
+      await createHome({ name })
+      setNewHome('')
+      reload()
+      toast.success(`Home "${name}" added`)
+    } catch {
+      toast.error('Failed to add home')
+    }
   }
 
   const addRoom = async () => {
     const name = newRoom.trim()
     if (!name || !newRoomHome) return
-    await createRoom({ name, home_id: newRoomHome })
-    setNewRoom('')
-    reload()
+    try {
+      await createRoom({ name, home_id: newRoomHome })
+      setNewRoom('')
+      reload()
+      toast.success(`Room "${name}" added`)
+    } catch {
+      toast.error('Failed to add room')
+    }
   }
 
   const addMfr = async () => {
     const name = newMfr.trim()
     if (!name) return
-    await createManufacturer({ name })
-    setNewMfr('')
-    reload()
+    try {
+      await createManufacturer({ name })
+      setNewMfr('')
+      reload()
+      toast.success(`Manufacturer "${name}" added`)
+    } catch {
+      toast.error('Failed to add manufacturer')
+    }
+  }
+
+  const saveTagRename = async () => {
+    if (!editingTag || !editingTagValue.trim()) return
+    try {
+      await renameTag(editingTag, editingTagValue.trim())
+      setEditingTag(null)
+      getTags().then(setTags)
+      toast.success('Tag renamed')
+    } catch {
+      toast.error('Failed to rename tag')
+    }
   }
 
   const homeById = (id: string) => homes.find(h => h.id === id)?.name ?? id
@@ -81,7 +101,10 @@ export default function Settings() {
             {homes.map(h => (
               <li key={h.id} className="flex items-center justify-between py-2">
                 <span className="text-sm dark:text-gray-200">{h.name}</span>
-                <button onClick={() => deleteHome(h.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                <button
+                  onClick={() => deleteHome(h.id).then(() => { reload(); toast.success(`"${h.name}" deleted`) }).catch(() => toast.error('Failed to delete home'))}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
                   <Trash2 size={16} />
                 </button>
               </li>
@@ -108,7 +131,10 @@ export default function Settings() {
             {rooms.map(r => (
               <li key={r.id} className="flex items-center justify-between py-2">
                 <span className="text-sm dark:text-gray-200">{r.name} <span className="text-gray-400">— {homeById(r.home_id)}</span></span>
-                <button onClick={() => deleteRoom(r.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                <button
+                  onClick={() => deleteRoom(r.id).then(() => { reload(); toast.success(`"${r.name}" deleted`) }).catch(() => toast.error('Failed to delete room'))}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
                   <Trash2 size={16} />
                 </button>
               </li>
@@ -147,7 +173,10 @@ export default function Settings() {
             {manufacturers.map(m => (
               <li key={m.id} className="flex items-center justify-between py-2">
                 <span className="text-sm dark:text-gray-200">{m.name}</span>
-                <button onClick={() => deleteManufacturer(m.id).then(reload)} className="text-red-400 hover:text-red-600 p-1">
+                <button
+                  onClick={() => deleteManufacturer(m.id).then(() => { reload(); toast.success(`"${m.name}" deleted`) }).catch(() => toast.error('Failed to delete manufacturer'))}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
                   <Trash2 size={16} />
                 </button>
               </li>
@@ -189,7 +218,12 @@ export default function Settings() {
                   <>
                     <span className="text-sm dark:text-gray-200 flex-1">{tag}</span>
                     <button onClick={() => { setEditingTag(tag); setEditingTagValue(tag) }} className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"><Pencil size={14} /></button>
-                    <button onClick={() => deleteTag(tag).then(() => getTags().then(setTags))} className="p-1 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                    <button
+                      onClick={() => deleteTag(tag).then(() => { getTags().then(setTags); toast.success(`Tag "${tag}" deleted`) }).catch(() => toast.error('Failed to delete tag'))}
+                      className="p-1 text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </>
                 )}
               </li>
@@ -199,7 +233,7 @@ export default function Settings() {
 
         {/* Import / Export */}
         <Section title="Import & Export">
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-2">
             <a
               href={getExportUrl('json')}
               download="pairman-export.json"
@@ -228,35 +262,25 @@ export default function Settings() {
               onChange={async e => {
                 const file = e.target.files?.[0]
                 if (!file) return
-                setImportStatus('Importing…')
+                toast.info('Importing…')
                 try {
                   const result = await importDevices(file)
-                  setImportStatus(`Done — ${result.imported} imported, ${result.skipped} skipped.`)
+                  toast.success(`Imported ${result.imported} device${result.imported !== 1 ? 's' : ''}${result.skipped ? `, ${result.skipped} skipped` : ''}`)
                 } catch {
-                  setImportStatus('Import failed. Check the file format.')
+                  toast.error('Import failed — check the file format')
                 }
                 if (importRef.current) importRef.current.value = ''
               }}
             />
           </div>
-          {importStatus && <p className="text-sm text-gray-600 dark:text-gray-300">{importStatus}</p>}
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400">
             CSV/JSON must have columns: name, home, room, manufacturer, model, device_type, protocol, pairing_code, qr_code_data…
           </p>
         </Section>
 
-        {/* About */}
-        <Section title="About">
-          <div className="text-sm space-y-1">
-            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">App</span>Pairman</p>
-            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Version</span>0.1.0</p>
-            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Description</span>Self-hosted smart home pairing code manager</p>
-          </div>
-        </Section>
-
-        {/* Backup */}
+        {/* Backup & Restore */}
         <Section title="Backup & Restore">
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2">
             <a
               href={getBackupUrl()}
               download="pairman-backup.db"
@@ -279,19 +303,27 @@ export default function Settings() {
                 const file = e.target.files?.[0]
                 if (!file) return
                 if (!confirm('This will replace ALL current data with the backup. Continue?')) return
-                setRestoreStatus('Restoring…')
+                toast.info('Restoring…')
                 try {
                   await restoreBackup(file)
-                  setRestoreStatus('Restore successful. Reloading…')
+                  toast.success('Restore successful — reloading…')
                   setTimeout(() => window.location.reload(), 1500)
                 } catch {
-                  setRestoreStatus('Restore failed. Make sure the file is a valid Pairman backup.')
+                  toast.error('Restore failed — make sure the file is a valid Pairman backup')
                 }
                 if (restoreRef.current) restoreRef.current.value = ''
               }}
             />
           </div>
-          {restoreStatus && <p className="text-sm text-gray-600 dark:text-gray-300">{restoreStatus}</p>}
+        </Section>
+
+        {/* About */}
+        <Section title="About">
+          <div className="text-sm space-y-1">
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">App</span>Pairman</p>
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Version</span>0.1.0</p>
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Description</span>Self-hosted smart home pairing code manager</p>
+          </div>
         </Section>
       </div>
     </div>

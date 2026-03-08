@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { getDevice, updateDevice, getHomes, getRooms, getManufacturers } from '../services/api'
 import type { Home, Room, Manufacturer, DeviceCreate } from '../types'
+import { useToast } from '../components/ToastProvider'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
 const DEVICE_TYPES = [
@@ -36,6 +37,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function EditDevice() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const toast = useToast()
   const [homes, setHomes] = useState<Home[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
@@ -65,8 +67,12 @@ export default function EditDevice() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id || !form) return
-    await updateDevice(id, form)
-    navigate(`/devices/${id}`)
+    try {
+      await updateDevice(id, form)
+      navigate(`/devices/${id}`)
+    } catch {
+      toast.error('Failed to save changes')
+    }
   }
 
   const inp = (f: keyof DeviceCreate, placeholder?: string, extraCls = '') => (

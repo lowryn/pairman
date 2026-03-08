@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { ArrowLeft, Printer, Pencil, Trash2, Paperclip, Download, File, FileText, ImageIcon, X, Upload, Plus, Check, ShieldAlert, AlertTriangle, QrCode } from 'lucide-react'
 import { getDevice, deleteDevice, getDeviceLabelUrl, getAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, getCustomFields, createCustomField, updateCustomField, deleteCustomField, getTags, setDeviceTags } from '../services/api'
 import type { Device, Attachment, CustomField } from '../types'
+import { useToast } from '../components/ToastProvider'
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -20,6 +21,7 @@ function AttachmentIcon({ fileType }: { fileType: string }) {
 export default function DeviceDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const toast = useToast()
   const [device, setDevice] = useState<Device | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
@@ -68,6 +70,9 @@ export default function DeviceDetail() {
     try {
       const att = await uploadAttachment(id, file)
       setAttachments(prev => [...prev, att])
+      toast.success('Attachment uploaded')
+    } catch {
+      toast.error('Upload failed')
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -106,8 +111,12 @@ export default function DeviceDetail() {
 
   const handleDelete = async () => {
     if (!id || !confirm('Delete this device?')) return
-    await deleteDevice(id)
-    navigate('/devices')
+    try {
+      await deleteDevice(id)
+      navigate('/devices')
+    } catch {
+      toast.error('Failed to delete device')
+    }
   }
 
   if (!device) return <div className="p-8 text-gray-400">Loading…</div>
