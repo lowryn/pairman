@@ -3,9 +3,17 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
 from ..models import Device
-from ..services.label_service import generate_label_sheet
+from ..services.label_service import generate_label_sheet, TEMPLATES, DEFAULT_TEMPLATE
 
 router = APIRouter(prefix="/devices", tags=["labels"])
+
+
+@router.get("/label-templates")
+def list_templates():
+    return [
+        {"key": key, "name": tpl.name, "labels_per_sheet": tpl.labels_per_sheet}
+        for key, tpl in TEMPLATES.items()
+    ]
 
 
 @router.get("/labels")
@@ -14,6 +22,7 @@ def get_label_sheet(
     room_id: str | None = Query(None),
     protocol: str | None = Query(None),
     device_type: str | None = Query(None),
+    template: str = Query(DEFAULT_TEMPLATE),
     db: Session = Depends(get_db),
 ):
     q = db.query(Device)
@@ -29,5 +38,5 @@ def get_label_sheet(
         joinedload(Device.room),
         joinedload(Device.manufacturer),
     ).order_by(Device.name).all()
-    pdf = generate_label_sheet(devices)
+    pdf = generate_label_sheet(devices, template)
     return Response(content=pdf, media_type="application/pdf")

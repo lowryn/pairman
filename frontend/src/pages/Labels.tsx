@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Printer, QrCode } from 'lucide-react'
-import { getHomes, getRooms, getManufacturers, getDevices, getLabelSheetUrl } from '../services/api'
+import { getHomes, getRooms, getManufacturers, getDevices, getLabelSheetUrl, getLabelTemplates } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -19,6 +19,8 @@ export default function Labels() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [devices, setDevices] = useState<Device[]>([])
+  const [templates, setTemplates] = useState<{ key: string; name: string; labels_per_sheet: number }[]>([])
+  const [templateKey, setTemplateKey] = useState('custom')
 
   const [homeFilter, setHomeFilter] = useState('')
   const [roomFilter, setRoomFilter] = useState('')
@@ -28,6 +30,7 @@ export default function Labels() {
   useEffect(() => {
     getHomes().then(setHomes)
     getManufacturers().then(setManufacturers)
+    getLabelTemplates().then(setTemplates)
   }, [])
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function Labels() {
     getDevices(params).then(setDevices)
   }, [homeFilter, roomFilter, protocolFilter, typeFilter])
 
-  const labelParams: Record<string, string> = {}
+  const labelParams: Record<string, string> = { template: templateKey }
   if (homeFilter)     labelParams.home_id = homeFilter
   if (roomFilter)     labelParams.room_id = roomFilter
   if (protocolFilter) labelParams.protocol = protocolFilter
@@ -54,7 +57,8 @@ export default function Labels() {
 
   const withCode = devices.filter(d => d.qr_code_data || d.pairing_code)
   const withoutCode = devices.filter(d => !d.qr_code_data && !d.pairing_code)
-  const pages = Math.ceil(withCode.length / 16)
+  const selectedTemplate = templates.find(t => t.key === templateKey)
+  const pages = selectedTemplate ? Math.ceil(withCode.length / selectedTemplate.labels_per_sheet) : 0
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -91,6 +95,33 @@ export default function Labels() {
               {DEVICE_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* Label template */}
+      <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-5 mb-4">
+        <h2 className="font-semibold text-sm text-gray-700 dark:text-gray-200 mb-3">Label template</h2>
+        <div className="flex flex-col gap-2">
+          {templates.map(t => (
+            <label key={t.key} className={`flex items-center justify-between gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              templateKey === t.key
+                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500'
+                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="radio"
+                  name="template"
+                  value={t.key}
+                  checked={templateKey === t.key}
+                  onChange={() => setTemplateKey(t.key)}
+                  className="accent-blue-600"
+                />
+                <span className="text-sm dark:text-gray-200">{t.name}</span>
+              </div>
+              <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{t.labels_per_sheet}/sheet</span>
+            </label>
+          ))}
         </div>
       </div>
 
@@ -146,7 +177,9 @@ export default function Labels() {
         <Printer size={16} />
         {withCode.length > 0 ? `Generate PDF — ${withCode.length} label${withCode.length !== 1 ? 's' : ''}` : 'No labels to generate'}
       </a>
-      <p className="text-xs text-gray-400 text-center mt-2">48.5 × 25.4 mm labels, 16 per A4 page</p>
+      {selectedTemplate && (
+        <p className="text-xs text-gray-400 text-center mt-2">{selectedTemplate.name}</p>
+      )}
     </div>
   )
 }

@@ -43,6 +43,8 @@ export const getLabelSheetUrl = (params?: Record<string, string>) => {
   const qs = params ? '?' + new URLSearchParams(params).toString() : ''
   return `/api/v1/devices/labels${qs}`
 }
+export const getLabelTemplates = () =>
+  api.get<{ key: string; name: string; labels_per_sheet: number }[]>('/devices/label-templates').then(r => r.data)
 
 // Scan
 export const decodePayload = (payload: string) =>
