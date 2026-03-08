@@ -223,6 +223,7 @@ Pairman has **no authentication**. It is designed for use on a trusted home netw
 - Do not expose port 7070 to the internet or port-forward it through your router
 - Anyone on your network with the IP and port can read, edit, or delete all your data
 - The backup endpoint allows downloading the full database — keep this in mind if guests use your network
+- It is completely vibe coded - there may be significant security flaws, recommended for personal local use only
 
 ---
 
