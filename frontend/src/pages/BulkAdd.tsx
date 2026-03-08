@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Keyboard, CheckCircle, Loader2 } from 'lucide-react'
 import jsQR from 'jsqr'
 import Scanner from '../components/Scanner'
-import { createDevice, getHomes, getManufacturers, decodePayload } from '../services/api'
-import type { Device, Home, Manufacturer, DeviceCreate } from '../types'
+import { createDevice, getHomes, getRooms, getManufacturers, decodePayload } from '../services/api'
+import type { Device, Home, Room, Manufacturer, DeviceCreate } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
 const DEVICE_TYPES = [
@@ -20,11 +20,14 @@ const sel = 'border dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gr
 export default function BulkAdd() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<Home[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   // Common attributes
   const [homeId, setHomeId] = useState('')
+  const [roomId, setRoomId] = useState('')
+  const [namePrefix, setNamePrefix] = useState('')
   const [deviceType, setDeviceType] = useState('')
   const [manufacturerId, setManufacturerId] = useState('')
   const [retailer, setRetailer] = useState('')
@@ -46,8 +49,13 @@ export default function BulkAdd() {
     getManufacturers().then(setManufacturers)
   }, [])
 
-  const nextName = (type: string) => {
-    const base = type || 'Device'
+  useEffect(() => {
+    if (homeId) { getRooms(homeId).then(setRooms); setRoomId('') }
+    else setRooms([])
+  }, [homeId])
+
+  const nextName = () => {
+    const base = namePrefix.trim() || deviceType || 'Device'
     return `${base} ${added.length + 1}`
   }
 
@@ -58,8 +66,9 @@ export default function BulkAdd() {
     try {
       const decoded = await decodePayload(payload).catch(() => null)
       const body: DeviceCreate = {
-        name: nextName(deviceType),
+        name: nextName(),
         home_id: homeId,
+        room_id: roomId || undefined,
         device_type: deviceType || undefined,
         manufacturer_id: manufacturerId || undefined,
         retailer: retailer || undefined,
@@ -143,12 +152,28 @@ export default function BulkAdd() {
         <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-4 mb-4">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">These devices are all…</p>
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-sm col-span-2">
+            <label className="flex flex-col gap-1 text-sm">
               <span className="text-gray-600 dark:text-gray-300 font-medium">Home *</span>
               <select className={sel} value={homeId} onChange={e => setHomeId(e.target.value)}>
                 <option value="">Select home…</option>
                 {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-gray-600 dark:text-gray-300 font-medium">Room</span>
+              <select className={sel} value={roomId} onChange={e => setRoomId(e.target.value)} disabled={!homeId}>
+                <option value="">No room</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm col-span-2">
+              <span className="text-gray-600 dark:text-gray-300 font-medium">Name prefix</span>
+              <input
+                className="border dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100"
+                value={namePrefix}
+                onChange={e => setNamePrefix(e.target.value)}
+                placeholder={`e.g. "Bedroom Light" → Bedroom Light 1, 2, 3…`}
+              />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-gray-600 dark:text-gray-300 font-medium">Device Type</span>
