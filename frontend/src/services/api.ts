@@ -83,6 +83,10 @@ export const getAttachmentDownloadUrl = (id: string) => `/api/v1/attachments/${i
 export const getTags = () => api.get<string[]>('/tags').then(r => r.data)
 export const setDeviceTags = (deviceId: string, tags: string[]) =>
   api.put<string[]>(`/devices/${deviceId}/tags`, { tags }).then(r => r.data)
+export const renameTag = (name: string, newName: string) =>
+  api.put<string>(`/tags/${encodeURIComponent(name)}`, { name: newName }).then(r => r.data)
+export const deleteTag = (name: string) =>
+  api.delete(`/tags/${encodeURIComponent(name)}`)
 
 // Custom fields
 export const getCustomFields = (deviceId: string) =>

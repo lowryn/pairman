@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, Plus, Upload } from 'lucide-react'
+import { Trash2, Plus, Upload, Pencil, Check, X } from 'lucide-react'
 import {
   getHomes, createHome, deleteHome,
   getRooms, createRoom, deleteRoom,
   getManufacturers, createManufacturer, deleteManufacturer,
   getExportUrl, importDevices,
   getBackupUrl, restoreBackup,
+  getTags, renameTag, deleteTag,
 } from '../services/api'
 import type { Home, Room, Manufacturer } from '../types'
 
@@ -13,6 +14,9 @@ export default function Settings() {
   const [homes, setHomes] = useState<Home[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
+  const [tags, setTags] = useState<string[]>([])
+  const [editingTag, setEditingTag] = useState<string | null>(null)
+  const [editingTagValue, setEditingTagValue] = useState('')
 
   const [newHome, setNewHome] = useState('')
   const [newRoom, setNewRoom] = useState('')
@@ -27,6 +31,14 @@ export default function Settings() {
     getHomes().then(h => { setHomes(h); if (!newRoomHome && h.length) setNewRoomHome(h[0].id) })
     getRooms().then(setRooms)
     getManufacturers().then(setManufacturers)
+    getTags().then(setTags)
+  }
+
+  const saveTagRename = async () => {
+    if (!editingTag || !editingTagValue.trim()) return
+    await renameTag(editingTag, editingTagValue.trim())
+    setEditingTag(null)
+    getTags().then(setTags)
   }
 
   useEffect(() => { reload() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -153,6 +165,36 @@ export default function Settings() {
               <Plus size={14} /> Add
             </button>
           </div>
+        </Section>
+
+        {/* Tags */}
+        <Section title="Tags">
+          <ul className="divide-y dark:divide-gray-700 mb-2">
+            {tags.length === 0 && <li className="py-2 text-sm text-gray-400">No tags yet</li>}
+            {tags.map(tag => (
+              <li key={tag} className="flex items-center justify-between py-2 gap-2">
+                {editingTag === tag ? (
+                  <>
+                    <input
+                      className="border dark:border-gray-600 rounded px-2 py-1 text-sm flex-1 dark:bg-gray-800 dark:text-gray-100"
+                      value={editingTagValue}
+                      onChange={e => setEditingTagValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveTagRename(); if (e.key === 'Escape') setEditingTag(null) }}
+                      autoFocus
+                    />
+                    <button onClick={saveTagRename} className="p-1 text-green-600 hover:text-green-800"><Check size={15} /></button>
+                    <button onClick={() => setEditingTag(null)} className="p-1 text-gray-400 hover:text-gray-600"><X size={15} /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm dark:text-gray-200 flex-1">{tag}</span>
+                    <button onClick={() => { setEditingTag(tag); setEditingTagValue(tag) }} className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"><Pencil size={14} /></button>
+                    <button onClick={() => deleteTag(tag).then(() => getTags().then(setTags))} className="p-1 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
         </Section>
 
         {/* Import / Export */}

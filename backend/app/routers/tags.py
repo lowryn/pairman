@@ -13,9 +13,34 @@ class TagsUpdate(BaseModel):
     tags: list[str]
 
 
+class TagRename(BaseModel):
+    name: str
+
+
 @router.get("/tags")
 def list_tags(db: Session = Depends(get_db)) -> list[str]:
     return [t.name for t in db.query(Tag).order_by(Tag.name).all()]
+
+
+@router.put("/tags/{tag_name}")
+def rename_tag(tag_name: str, body: TagRename, db: Session = Depends(get_db)) -> str:
+    tag = db.query(Tag).filter(Tag.name == tag_name).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    if db.query(Tag).filter(Tag.name == body.name).first():
+        raise HTTPException(status_code=409, detail="Tag name already exists")
+    tag.name = body.name.strip()
+    db.commit()
+    return tag.name
+
+
+@router.delete("/tags/{tag_name}", status_code=204)
+def delete_tag(tag_name: str, db: Session = Depends(get_db)):
+    tag = db.query(Tag).filter(Tag.name == tag_name).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    db.delete(tag)
+    db.commit()
 
 
 @router.put("/devices/{device_id}/tags")

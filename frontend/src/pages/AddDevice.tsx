@@ -291,6 +291,26 @@ export default function AddDevice() {
             </>
           )}
 
+          {field('Retailer', inp('retailer', 'e.g. Amazon'))}
+
+          {field('Purchase Date',
+            <input
+              type="date"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+              value={(form.purchase_date as string) ?? ''}
+              onChange={e => set('purchase_date', e.target.value)}
+            />
+          )}
+
+          {field('Warranty Expires',
+            <input
+              type="date"
+              className="border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+              value={(form.warranty_expiry as string) ?? ''}
+              onChange={e => set('warranty_expiry', e.target.value)}
+            />
+          )}
+
           {field('Notes',
             <textarea
               className="border dark:border-gray-600 rounded-lg px-3 py-2 h-20 resize-none dark:bg-gray-800 dark:text-gray-100"
