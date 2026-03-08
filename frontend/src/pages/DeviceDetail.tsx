@@ -154,6 +154,18 @@ export default function DeviceDetail() {
             <span className="text-gray-500 dark:text-gray-400 w-36 shrink-0">{label}</span>
             {label === 'Admin URL'
               ? <a href={value as string} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate">{value as string}</a>
+              : label === 'Warranty Expires'
+              ? (() => {
+                  const today = new Date(); today.setHours(0,0,0,0)
+                  const d = new Date(value as string)
+                  const soon = new Date(today); soon.setDate(soon.getDate() + 30)
+                  const cls = d < today
+                    ? 'text-red-600 dark:text-red-400 font-medium'
+                    : d <= soon
+                    ? 'text-amber-600 dark:text-amber-400 font-medium'
+                    : 'dark:text-gray-100'
+                  return <span className={cls}>{value as string}</span>
+                })()
               : <span className="dark:text-gray-100">{value as string}</span>
             }
           </div>

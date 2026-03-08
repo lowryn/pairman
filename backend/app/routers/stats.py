@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -44,6 +45,19 @@ def get_stats(db: Session = Depends(get_db)):
             ],
         })
 
+    today = date.today()
+    soon = today + timedelta(days=30)
+    warranty_expired = []
+    warranty_expiring_soon = []
+    for d in devices:
+        if not d.warranty_expiry:
+            continue
+        entry = {"id": d.id, "name": d.name, "warranty_expiry": str(d.warranty_expiry)}
+        if d.warranty_expiry < today:
+            warranty_expired.append(entry)
+        elif d.warranty_expiry <= soon:
+            warranty_expiring_soon.append(entry)
+
     return {
         "total_devices": len(devices),
         "total_homes":   len(homes),
@@ -57,4 +71,6 @@ def get_stats(db: Session = Depends(get_db)):
             {"device_type": k, "count": v}
             for k, v in sorted(type_counts.items(), key=lambda x: -x[1])
         ],
+        "warranty_expired": sorted(warranty_expired, key=lambda x: x["warranty_expiry"]),
+        "warranty_expiring_soon": sorted(warranty_expiring_soon, key=lambda x: x["warranty_expiry"]),
     }

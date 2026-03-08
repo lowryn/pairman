@@ -93,6 +93,12 @@ export interface Attachment {
   created_at: string
 }
 
+export interface WarrantyAlert {
+  id: string
+  name: string
+  warranty_expiry: string
+}
+
 export interface DashboardStats {
   total_devices: number
   total_homes: number
@@ -105,6 +111,8 @@ export interface DashboardStats {
   }>
   by_protocol: Array<{ protocol: string; count: number }>
   by_device_type: Array<{ device_type: string; count: number }>
+  warranty_expired: WarrantyAlert[]
+  warranty_expiring_soon: WarrantyAlert[]
 }
 
 export interface DecodeResult {

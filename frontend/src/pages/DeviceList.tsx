@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, QrCode, SlidersHorizontal, X } from 'lucide-react'
+import { Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle } from 'lucide-react'
 import { getDevices, getHomes, getRooms, getManufacturers, getAttachmentDownloadUrl, getTags } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
@@ -22,6 +22,16 @@ const PROTOCOL_COLOURS: Record<string, string> = {
   Bluetooth: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
   Thread:    'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
   Other:     'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+}
+
+function warrantyStatus(expiry?: string): 'expired' | 'soon' | null {
+  if (!expiry) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const d = new Date(expiry)
+  if (d < today) return 'expired'
+  const soon = new Date(today); soon.setDate(soon.getDate() + 30)
+  if (d <= soon) return 'soon'
+  return null
 }
 
 export default function DeviceList() {
@@ -193,16 +203,24 @@ export default function DeviceList() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName(device.manufacturer_id)}</p>
                 )}
               </div>
-              {device.thumbnail_attachment_id
-                ? <img
-                    src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)}
-                    alt=""
-                    className="w-12 h-12 object-cover rounded-lg shrink-0"
-                  />
-                : (device.qr_code_data || device.pairing_code) && (
-                    <QrCode size={18} className="text-gray-300 dark:text-gray-600 shrink-0 mt-0.5" />
-                  )
-              }
+              <div className="flex items-center gap-1.5 shrink-0">
+                {warrantyStatus(device.warranty_expiry) === 'expired' && (
+                  <span title="Warranty expired"><ShieldAlert size={15} className="text-red-400" /></span>
+                )}
+                {warrantyStatus(device.warranty_expiry) === 'soon' && (
+                  <span title="Warranty expiring soon"><AlertTriangle size={15} className="text-amber-400" /></span>
+                )}
+                {device.thumbnail_attachment_id
+                  ? <img
+                      src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)}
+                      alt=""
+                      className="w-12 h-12 object-cover rounded-lg"
+                    />
+                  : (device.qr_code_data || device.pairing_code) && (
+                      <QrCode size={18} className="text-gray-300 dark:text-gray-600" />
+                    )
+                }
+              </div>
             </div>
 
             {(device.home_id || device.room_id) && (
