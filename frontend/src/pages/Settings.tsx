@@ -203,6 +203,15 @@ export default function Settings() {
           </p>
         </Section>
 
+        {/* About */}
+        <Section title="About">
+          <div className="text-sm space-y-1">
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">App</span>Pairman</p>
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Version</span>0.1.0</p>
+            <p className="dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400 w-36 inline-block">Description</span>Self-hosted smart home pairing code manager</p>
+          </div>
+        </Section>
+
         {/* Backup */}
         <Section title="Backup & Restore">
           <div className="flex flex-wrap gap-2 mb-3">
