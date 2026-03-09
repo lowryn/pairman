@@ -6,6 +6,22 @@ Built for home users who are tired of losing the little sticker off the back of 
 
 ---
 
+## Screenshots
+
+| Dashboard | Devices |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Devices](docs/screenshots/devices.png) |
+
+| Device Detail | Add Device |
+|---|---|
+| ![Device Detail](docs/screenshots/device-detail.png) | ![Add Device](docs/screenshots/add-device.png) |
+
+| Print Labels | Settings |
+|---|---|
+| ![Labels](docs/screenshots/labels.png) | ![Settings](docs/screenshots/settings.png) |
+
+---
+
 ## Features
 
 - Scan QR codes with your phone camera or upload a photo
@@ -210,9 +226,20 @@ The `data/` folder next to your compose file is also a full copy of the database
 
 ### Print labels
 
-From any device page, tap **Print Label** to generate a PDF label (48.5 × 25.4 mm) with the QR code, device name, model, and pairing code. Sized for standard adhesive label sheets.
+From any device page, tap **Print Label** to generate a single PDF label with the QR code, device name, model, room, and pairing code.
 
-From the device list you can also generate a full sheet of labels (4×4 on A4) for a filtered set of devices.
+From the **Labels** page you can generate a full A4 sheet of labels for a filtered set of devices. Six templates are supported:
+
+| Template | Size | Labels/sheet |
+|---|---|---|
+| Custom | 48.5 × 25.4 mm | 16 |
+| Avery L7160 | 63.5 × 38.1 mm | 21 |
+| Avery L7161 | 63.5 × 46.6 mm | 18 |
+| Avery L7163 | 99.1 × 38.1 mm | 14 |
+| Avery L7164 | 63.5 × 72.0 mm | 12 |
+| Avery L4732 | 35.6 × 16.9 mm | 80 |
+
+Filter by home, room, protocol, or device type before generating. The page shows a live preview count and page estimate.
 
 ---
 
