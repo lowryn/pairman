@@ -33,6 +33,7 @@ export default function DeviceDetail() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [warrantyDismissed, setWarrantyDismissed] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -110,7 +111,7 @@ export default function DeviceDetail() {
   }
 
   const handleDelete = async () => {
-    if (!id || !confirm('Delete this device?')) return
+    if (!id) return
     try {
       await deleteDevice(id)
       navigate('/devices')
@@ -137,10 +138,35 @@ export default function DeviceDetail() {
         <Link to={`/devices/${id}/edit`} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
           <Pencil size={18} />
         </Link>
-        <button onClick={handleDelete} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-lg">
+        <button onClick={() => setShowDeleteModal(true)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-lg">
           <Trash2 size={18} />
         </button>
       </div>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h2 className="text-lg font-semibold dark:text-gray-100 mb-1">Delete device?</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              <span className="font-medium text-gray-700 dark:text-gray-200">{device.name}</span> will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 py-2.5 rounded-xl border dark:border-gray-600 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(() => {
         if (!device.warranty_expiry || warrantyDismissed) return null

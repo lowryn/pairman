@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from alembic.config import Config
+from alembic import command
 
 from .config import settings
 from .database import engine, Base
@@ -10,10 +12,16 @@ from . import models  # ensure all models are registered  # noqa: F401
 from .routers import homes, rooms, manufacturers, devices, scan, labels, backup, stats, attachments, custom_fields, tags
 
 
+def _run_migrations():
+    alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.db_url)
+    command.upgrade(alembic_cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    _run_migrations()
     yield
 
 
