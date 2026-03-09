@@ -23,20 +23,29 @@ def get_label_sheet(
     protocol: str | None = Query(None),
     device_type: str | None = Query(None),
     template: str = Query(DEFAULT_TEMPLATE),
+    ids: str | None = Query(None),   # comma-separated device IDs for selection
     db: Session = Depends(get_db),
 ):
-    q = db.query(Device)
-    if home_id:
-        q = q.filter(Device.home_id == home_id)
-    if room_id:
-        q = q.filter(Device.room_id == room_id)
-    if protocol:
-        q = q.filter(Device.protocol == protocol)
-    if device_type:
-        q = q.filter(Device.device_type == device_type)
-    devices = q.options(
-        joinedload(Device.room),
-        joinedload(Device.manufacturer),
-    ).order_by(Device.name).all()
+    opts = [joinedload(Device.room), joinedload(Device.manufacturer)]
+    if ids:
+        id_list = [i.strip() for i in ids.split(',') if i.strip()]
+        devices = (
+            db.query(Device)
+            .filter(Device.id.in_(id_list))
+            .options(*opts)
+            .order_by(Device.name)
+            .all()
+        )
+    else:
+        q = db.query(Device)
+        if home_id:
+            q = q.filter(Device.home_id == home_id)
+        if room_id:
+            q = q.filter(Device.room_id == room_id)
+        if protocol:
+            q = q.filter(Device.protocol == protocol)
+        if device_type:
+            q = q.filter(Device.device_type == device_type)
+        devices = q.options(*opts).order_by(Device.name).all()
     pdf = generate_label_sheet(devices, template)
     return Response(content=pdf, media_type="application/pdf")

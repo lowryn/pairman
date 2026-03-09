@@ -21,6 +21,7 @@ export default function Labels() {
   const [devices, setDevices] = useState<Device[]>([])
   const [templates, setTemplates] = useState<{ key: string; name: string; labels_per_sheet: number }[]>([])
   const [templateKey, setTemplateKey] = useState('custom')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const [homeFilter, setHomeFilter] = useState('')
   const [roomFilter, setRoomFilter] = useState('')
@@ -47,23 +48,55 @@ export default function Labels() {
     getDevices(params).then(setDevices)
   }, [homeFilter, roomFilter, protocolFilter, typeFilter])
 
-  const labelParams: Record<string, string> = { template: templateKey }
-  if (homeFilter)     labelParams.home_id = homeFilter
-  if (roomFilter)     labelParams.room_id = roomFilter
-  if (protocolFilter) labelParams.protocol = protocolFilter
-  if (typeFilter)     labelParams.device_type = typeFilter
+  const withCode = devices.filter(d => d.qr_code_data || d.pairing_code)
+  const withoutCode = devices.filter(d => !d.qr_code_data && !d.pairing_code)
+
+  // When the filtered device list changes, select all by default
+  useEffect(() => {
+    setSelected(new Set(withCode.map(d => d.id)))
+  }, [devices]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleDevice = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+
+  const allSelected = withCode.length > 0 && selected.size === withCode.length
+  const noneSelected = selected.size === 0
+
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(withCode.map(d => d.id)))
 
   const mfrName = (id?: string) => manufacturers.find(m => m.id === id)?.name
 
-  const withCode = devices.filter(d => d.qr_code_data || d.pairing_code)
-  const withoutCode = devices.filter(d => !d.qr_code_data && !d.pairing_code)
   const selectedTemplate = templates.find(t => t.key === templateKey)
-  const pages = selectedTemplate ? Math.ceil(withCode.length / selectedTemplate.labels_per_sheet) : 0
+  const selectedPages = selectedTemplate && selected.size > 0
+    ? Math.ceil(selected.size / selectedTemplate.labels_per_sheet)
+    : 0
+
+  // Build the generate URL: use ids= for selections, filter params when all selected
+  const generateUrl = (() => {
+    if (noneSelected) return undefined
+    const params: Record<string, string> = { template: templateKey }
+    if (allSelected) {
+      // Use filter params — server applies same filters
+      if (homeFilter)     params.home_id = homeFilter
+      if (roomFilter)     params.room_id = roomFilter
+      if (protocolFilter) params.protocol = protocolFilter
+      if (typeFilter)     params.device_type = typeFilter
+    } else {
+      params.ids = Array.from(selected).join(',')
+    }
+    return getLabelSheetUrl(params)
+  })()
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-6 dark:text-gray-100">Print Labels</h1>
 
+      {/* Filters */}
       <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-5 mb-4">
         <h2 className="font-semibold text-sm text-gray-700 dark:text-gray-200 mb-3">Filter devices</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -125,18 +158,36 @@ export default function Labels() {
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Device selection */}
       <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl p-5 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-sm text-gray-700 dark:text-gray-200">
-            {withCode.length} label{withCode.length !== 1 ? 's' : ''}
-            {pages > 0 && <span className="font-normal text-gray-400 dark:text-gray-500"> · {pages} page{pages !== 1 ? 's' : ''}</span>}
+            {withCode.length === 0 ? 'No printable devices' : (
+              <>
+                {selected.size} of {withCode.length} selected
+                {selectedPages > 0 && (
+                  <span className="font-normal text-gray-400 dark:text-gray-500">
+                    {' · '}{selectedPages} page{selectedPages !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </>
+            )}
           </h2>
-          {withoutCode.length > 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
-              {withoutCode.length} device{withoutCode.length !== 1 ? 's' : ''} skipped (no code)
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {withoutCode.length > 0 && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                {withoutCode.length} skipped (no code)
+              </span>
+            )}
+            {withCode.length > 0 && (
+              <button
+                onClick={toggleAll}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
+          </div>
         </div>
 
         {withCode.length === 0 ? (
@@ -145,13 +196,24 @@ export default function Labels() {
             <p className="text-sm">No devices with pairing codes match these filters.</p>
           </div>
         ) : (
-          <ul className="divide-y dark:divide-gray-800 max-h-72 overflow-y-auto">
+          <ul className="divide-y dark:divide-gray-800 max-h-72 overflow-y-auto -mx-1">
             {withCode.map(d => (
-              <li key={d.id} className="flex items-center justify-between py-2 gap-2">
-                <div className="min-w-0">
+              <li
+                key={d.id}
+                onClick={() => toggleDevice(d.id)}
+                className="flex items-center gap-3 py-2 px-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(d.id)}
+                  onChange={() => toggleDevice(d.id)}
+                  onClick={e => e.stopPropagation()}
+                  className="accent-blue-600 shrink-0 w-4 h-4"
+                />
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium dark:text-gray-200 truncate">{d.name}</p>
                   {(d.model || mfrName(d.manufacturer_id)) && (
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
                       {[mfrName(d.manufacturer_id), d.model].filter(Boolean).join(' · ')}
                     </p>
                   )}
@@ -164,21 +226,23 @@ export default function Labels() {
       </div>
 
       <a
-        href={withCode.length > 0 ? getLabelSheetUrl(Object.keys(labelParams).length ? labelParams : undefined) : undefined}
+        href={generateUrl}
         target="_blank"
         rel="noreferrer"
-        aria-disabled={withCode.length === 0}
+        aria-disabled={noneSelected}
         className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-          withCode.length > 0
+          !noneSelected
             ? 'bg-blue-600 text-white hover:bg-blue-700'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none'
         }`}
       >
         <Printer size={16} />
-        {withCode.length > 0 ? `Generate PDF — ${withCode.length} label${withCode.length !== 1 ? 's' : ''}` : 'No labels to generate'}
+        {noneSelected
+          ? 'No labels selected'
+          : `Generate PDF — ${selected.size} label${selected.size !== 1 ? 's' : ''}`}
       </a>
-      {selectedTemplate && (
-        <p className="text-xs text-gray-400 text-center mt-2">{selectedTemplate.name}</p>
+      {selectedTemplate && selected.size > 0 && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">{selectedTemplate.name}</p>
       )}
     </div>
   )
