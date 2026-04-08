@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Printer, QrCode } from 'lucide-react'
-import { getHomes, getRooms, getManufacturers, getDevices, getLabelSheetUrl, getLabelTemplates } from '../services/api'
+import { getHomes, getRooms, getManufacturers, getDevices, fetchLabelSheet, getLabelTemplates } from '../services/api'
 import type { Device, Home, Room, Manufacturer } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -22,6 +22,8 @@ export default function Labels() {
   const [templates, setTemplates] = useState<{ key: string; name: string; labels_per_sheet: number }[]>([])
   const [templateKey, setTemplateKey] = useState('custom')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const [generating, setGenerating] = useState(false)
 
   const [homeFilter, setHomeFilter] = useState('')
   const [roomFilter, setRoomFilter] = useState('')
@@ -76,12 +78,10 @@ export default function Labels() {
     ? Math.ceil(selected.size / selectedTemplate.labels_per_sheet)
     : 0
 
-  // Build the generate URL: use ids= for selections, filter params when all selected
-  const generateUrl = (() => {
+  const generateParams = (): Record<string, string> | undefined => {
     if (noneSelected) return undefined
     const params: Record<string, string> = { template: templateKey }
     if (allSelected) {
-      // Use filter params — server applies same filters
       if (homeFilter)     params.home_id = homeFilter
       if (roomFilter)     params.room_id = roomFilter
       if (protocolFilter) params.protocol = protocolFilter
@@ -89,8 +89,25 @@ export default function Labels() {
     } else {
       params.ids = Array.from(selected).join(',')
     }
-    return getLabelSheetUrl(params)
-  })()
+    return params
+  }
+
+  const handleGenerate = async () => {
+    const params = generateParams()
+    if (!params) return
+    setGenerating(true)
+    try {
+      const blob = await fetchLabelSheet(params)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'pairman-labels.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -225,22 +242,22 @@ export default function Labels() {
         )}
       </div>
 
-      <a
-        href={generateUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-disabled={noneSelected}
-        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors ${
-          !noneSelected
+      <button
+        onClick={handleGenerate}
+        disabled={noneSelected || generating}
+        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors w-full ${
+          !noneSelected && !generating
             ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
         }`}
       >
         <Printer size={16} />
-        {noneSelected
-          ? 'No labels selected'
-          : `Generate PDF — ${selected.size} label${selected.size !== 1 ? 's' : ''}`}
-      </a>
+        {generating
+          ? 'Generating…'
+          : noneSelected
+            ? 'No labels selected'
+            : `Generate PDF — ${selected.size} label${selected.size !== 1 ? 's' : ''}`}
+      </button>
       {selectedTemplate && selected.size > 0 && (
         <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">{selectedTemplate.name}</p>
       )}
