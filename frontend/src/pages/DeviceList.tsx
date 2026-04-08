@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Plus, Search, QrCode, SlidersHorizontal, X, ShieldAlert, AlertTriangle,
@@ -81,6 +81,94 @@ function warrantyStatus(expiry?: string): 'expired' | 'soon' | null {
   return null
 }
 
+interface DeviceCardProps {
+  device: Device
+  selectMode: boolean
+  isSelected: boolean
+  roomName?: string
+  homeName?: string
+  mfrName?: string
+  onToggle: (id: string) => void
+  onOpen: (id: string) => void
+}
+
+const DeviceCard = memo(function DeviceCard({
+  device, selectMode, isSelected, roomName, homeName, mfrName, onToggle, onOpen,
+}: DeviceCardProps) {
+  const warranty = warrantyStatus(device.warranty_expiry)
+  const Icon = device.device_type ? DEVICE_TYPE_ICONS[device.device_type] : null
+  return (
+    <div
+      onClick={() => selectMode ? onToggle(device.id) : onOpen(device.id)}
+      className={`bg-white dark:bg-gray-900 border rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-md ${
+        selectMode && isSelected
+          ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
+          : 'dark:border-gray-700'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold truncate dark:text-gray-100">{device.name}</h2>
+          {device.model && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{device.model}</p>}
+          {!device.model && mfrName && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName}</p>
+          )}
+        </div>
+        <div className="flex items-start gap-1.5 shrink-0">
+          {warranty === 'expired' && (
+            <span title="Warranty expired" className="flex items-center gap-0.5 text-red-500 text-[10px] font-medium">
+              <ShieldAlert size={15} className="mt-0.5" /> Expired
+            </span>
+          )}
+          {warranty === 'soon' && (
+            <span title="Warranty expiring soon" className="flex items-center gap-0.5 text-amber-500 text-[10px] font-medium">
+              <AlertTriangle size={15} className="mt-0.5" /> Soon
+            </span>
+          )}
+          {Icon && (
+            <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg" title={device.device_type!}>
+              <Icon size={16} className="text-gray-500 dark:text-gray-400" />
+            </div>
+          )}
+          {device.thumbnail_attachment_id && (
+            <img src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)} alt="" className="w-10 h-10 object-cover rounded-lg" />
+          )}
+        </div>
+      </div>
+
+      {(homeName || roomName) && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 truncate flex items-center gap-1">
+          {roomName && <MapPin size={11} className="shrink-0" />}
+          {[roomName, homeName].filter(Boolean).join(' · ')}
+        </p>
+      )}
+
+      <div className="mt-2 flex gap-1.5 flex-wrap">
+        {device.protocol && (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PROTOCOL_COLOURS[device.protocol] ?? PROTOCOL_COLOURS.Other}`}>
+            {device.protocol}
+          </span>
+        )}
+        {device.device_type && (
+          <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
+            {device.device_type}
+          </span>
+        )}
+        {mfrName && device.model && (
+          <span className="text-xs bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
+            {mfrName}
+          </span>
+        )}
+        {device.tags.map(tag => (
+          <span key={tag} className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+})
+
 export default function DeviceList() {
   const navigate = useNavigate()
   const [devices, setDevices] = useState<Device[]>([])
@@ -132,41 +220,47 @@ export default function DeviceList() {
     setHomeFilter(''); setRoomFilter(''); setProtocolFilter(''); setTypeFilter(''); setMfrFilter(''); setTagFilter('')
   }
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = useCallback((id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
-  }
+  }, [])
+
+  const openDevice = useCallback((id: string) => navigate(`/devices/${id}`), [navigate])
 
   const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()) }
 
   const bulkDelete = async () => {
     if (!selected.size || !confirm(`Delete ${selected.size} device${selected.size !== 1 ? 's' : ''}?`)) return
     setDeleting(true)
-    await Promise.all([...selected].map(id => deleteDevice(id)))
-    setDevices(prev => prev.filter(d => !selected.has(d.id)))
-    exitSelectMode()
-    setDeleting(false)
+    try {
+      await Promise.all([...selected].map(id => deleteDevice(id)))
+      setDevices(prev => prev.filter(d => !selected.has(d.id)))
+      exitSelectMode()
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const [groupBy, setGroupBy] = useState<GroupBy>('')
 
-  const roomName = (id?: string) => allRooms.find(r => r.id === id)?.name
-  const mfrName  = (id?: string) => manufacturers.find(m => m.id === id)?.name
-  const homeName = (id?: string) => homes.find(h => h.id === id)?.name
+  // O(1) name lookups
+  const roomMap = useMemo(() => new Map(allRooms.map(r => [r.id, r.name])), [allRooms])
+  const homeMap = useMemo(() => new Map(homes.map(h => [h.id, h.name])), [homes])
+  const mfrMap  = useMemo(() => new Map(manufacturers.map(m => [m.id, m.name])), [manufacturers])
 
-  const grouped = (() => {
+  const grouped = useMemo(() => {
     if (!groupBy) return null
     const map = new Map<string, Device[]>()
     for (const d of devices) {
       let keys: string[]
-      if (groupBy === 'home')         keys = [homeName(d.home_id) || 'Unassigned']
-      else if (groupBy === 'room')    keys = [roomName(d.room_id) || 'Unassigned']
+      if (groupBy === 'home')              keys = [homeMap.get(d.home_id || '') || 'Unassigned']
+      else if (groupBy === 'room')         keys = [roomMap.get(d.room_id || '') || 'Unassigned']
       else if (groupBy === 'protocol')     keys = [d.protocol || 'Unknown']
       else if (groupBy === 'device_type')  keys = [d.device_type || 'Unknown']
-      else if (groupBy === 'manufacturer') keys = [mfrName(d.manufacturer_id) || 'Unknown']
+      else if (groupBy === 'manufacturer') keys = [mfrMap.get(d.manufacturer_id || '') || 'Unknown']
       else keys = d.tags.length ? d.tags : ['Untagged']
 
       for (const key of keys) {
@@ -174,7 +268,6 @@ export default function DeviceList() {
         map.get(key)!.push(d)
       }
     }
-    // Sort groups alphabetically, but push fallback labels to the end
     const fallbacks = new Set(['Unassigned', 'Unknown', 'Untagged'])
     return [...map.entries()]
       .sort(([a], [b]) => {
@@ -183,76 +276,20 @@ export default function DeviceList() {
         return a.localeCompare(b)
       })
       .map(([label, devices]) => ({ label, devices }))
-  })()
+  }, [groupBy, devices, homeMap, roomMap, mfrMap])
 
-  const DeviceCard = ({ device }: { device: Device }) => (
-    <div
-      onClick={() => selectMode ? toggleSelect(device.id) : navigate(`/devices/${device.id}`)}
-      className={`bg-white dark:bg-gray-900 border rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-md ${
-        selectMode && selected.has(device.id)
-          ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
-          : 'dark:border-gray-700'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold truncate dark:text-gray-100">{device.name}</h2>
-          {device.model && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{device.model}</p>}
-          {!device.model && mfrName(device.manufacturer_id) && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{mfrName(device.manufacturer_id)}</p>
-          )}
-        </div>
-        <div className="flex items-start gap-1.5 shrink-0">
-          {warrantyStatus(device.warranty_expiry) === 'expired' && (
-            <span title="Warranty expired"><ShieldAlert size={15} className="text-red-400 mt-0.5" /></span>
-          )}
-          {warrantyStatus(device.warranty_expiry) === 'soon' && (
-            <span title="Warranty expiring soon"><AlertTriangle size={15} className="text-amber-400 mt-0.5" /></span>
-          )}
-          {device.device_type && DEVICE_TYPE_ICONS[device.device_type] && (() => {
-            const Icon = DEVICE_TYPE_ICONS[device.device_type!]
-            return (
-              <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg" title={device.device_type}>
-                <Icon size={16} className="text-gray-500 dark:text-gray-400" />
-              </div>
-            )
-          })()}
-          {device.thumbnail_attachment_id && (
-            <img src={getAttachmentDownloadUrl(device.thumbnail_attachment_id)} alt="" className="w-10 h-10 object-cover rounded-lg" />
-          )}
-        </div>
-      </div>
-
-      {(device.home_id || device.room_id) && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 truncate flex items-center gap-1">
-          {roomName(device.room_id) && <MapPin size={11} className="shrink-0" />}
-          {[roomName(device.room_id), homeName(device.home_id)].filter(Boolean).join(' · ')}
-        </p>
-      )}
-
-      <div className="mt-2 flex gap-1.5 flex-wrap">
-        {device.protocol && (
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PROTOCOL_COLOURS[device.protocol] ?? PROTOCOL_COLOURS.Other}`}>
-            {device.protocol}
-          </span>
-        )}
-        {device.device_type && (
-          <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
-            {device.device_type}
-          </span>
-        )}
-        {device.manufacturer_id && device.model && mfrName(device.manufacturer_id) && (
-          <span className="text-xs bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-            {mfrName(device.manufacturer_id)}
-          </span>
-        )}
-        {device.tags.map(tag => (
-          <span key={tag} className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
+  const renderCard = (device: Device) => (
+    <DeviceCard
+      key={device.id}
+      device={device}
+      selectMode={selectMode}
+      isSelected={selected.has(device.id)}
+      roomName={roomMap.get(device.room_id || '')}
+      homeName={homeMap.get(device.home_id || '')}
+      mfrName={mfrMap.get(device.manufacturer_id || '')}
+      onToggle={toggleSelect}
+      onOpen={openDevice}
+    />
   )
 
   const selectCls = 'border dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100'
@@ -404,14 +441,14 @@ export default function DeviceList() {
                 </span>
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {group.map(device => <DeviceCard key={device.id} device={device} />)}
+                {group.map(renderCard)}
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {devices.map(device => <DeviceCard key={device.id} device={device} />)}
+          {devices.map(renderCard)}
         </div>
       )}
 

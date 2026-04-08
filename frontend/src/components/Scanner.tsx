@@ -21,21 +21,33 @@ export default function Scanner({ onResult, onClose }: Props) {
       return
     }
 
+    let cancelled = false
+
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
       .then((stream) => {
+        // If the component unmounted while getUserMedia was pending, stop
+        // the stream immediately — don't leak the camera.
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
         }
       })
-      .catch(() => setError('Camera unavailable — check your browser permissions.'))
+      .catch(() => {
+        if (!cancelled) setError('Camera unavailable — check your browser permissions.')
+      })
 
     return () => {
+      cancelled = true
       cancelAnimationFrame(rafRef.current)
       streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleVideoPlay = () => {
     const video = videoRef.current
