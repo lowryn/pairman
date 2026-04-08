@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -56,7 +57,12 @@ def set_device_tags(device_id: str, body: TagsUpdate, db: Session = Depends(get_
         if not tag:
             tag = Tag(name=name)
             db.add(tag)
-            db.flush()
+            try:
+                db.flush()
+            except IntegrityError:
+                # Another request created the same tag — fetch it.
+                db.rollback()
+                tag = db.query(Tag).filter(Tag.name == name).first()
         tags.append(tag)
 
     device.tags = tags

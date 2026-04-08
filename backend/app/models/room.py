@@ -9,7 +9,7 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    home_id: Mapped[str] = mapped_column(String, ForeignKey("homes.id"), nullable=False)
+    home_id: Mapped[str] = mapped_column(String, ForeignKey("homes.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     icon: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

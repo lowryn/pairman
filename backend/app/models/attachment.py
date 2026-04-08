@@ -9,7 +9,7 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    device_id: Mapped[str] = mapped_column(String, ForeignKey("devices.id"), nullable=False)
+    device_id: Mapped[str] = mapped_column(String, ForeignKey("devices.id"), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     file_type: Mapped[str] = mapped_column(String, nullable=False)

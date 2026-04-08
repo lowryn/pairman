@@ -125,8 +125,18 @@ export default function AddDevice() {
   }
 
   const doSave = async () => {
-    const device = await createDevice(form as DeviceCreate)
-    navigate(`/devices/${device.id}`)
+    try {
+      const device = await createDevice(form as DeviceCreate)
+      navigate(`/devices/${device.id}`)
+    } catch (err: any) {
+      // Server-side duplicate race catch-all
+      const detail = err?.response?.data?.detail
+      if (err?.response?.status === 409 && detail?.existing_id) {
+        setDuplicate({ id: detail.existing_id, name: detail.existing_name })
+      } else {
+        throw err
+      }
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -248,6 +248,24 @@ def list_devices(
 
 @router.post("", response_model=DeviceRead, status_code=201)
 def create_device(body: DeviceCreate, db: Session = Depends(get_db)):
+    # Server-side duplicate guard — the frontend also checks via /lookup, but this
+    # closes the race between lookup and insert.
+    if body.pairing_code or body.qr_code_data:
+        conds = []
+        if body.pairing_code:
+            conds.append(Device.pairing_code == body.pairing_code)
+        if body.qr_code_data:
+            conds.append(Device.qr_code_data == body.qr_code_data)
+        existing = db.query(Device).filter(or_(*conds)).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "A device with this pairing code already exists.",
+                    "existing_id": existing.id,
+                    "existing_name": existing.name,
+                },
+            )
     device = Device(**body.model_dump())
     db.add(device)
     db.commit()
