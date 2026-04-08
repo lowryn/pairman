@@ -1,7 +1,29 @@
 import axios from 'axios'
 import type { Home, Room, Manufacturer, Device, DeviceCreate, DecodeResult, DashboardStats, Attachment, CustomField } from '../types'
 
-const api = axios.create({ baseURL: '/api/v1' })
+const api = axios.create({ baseURL: '/api/v1', timeout: 30000 })
+
+// Pluggable error reporter — ToastProvider wires into this on mount so that
+// API modules don't need a direct dependency on React context.
+let reportError: (msg: string) => void = (msg) => console.error('[api]', msg)
+export const setApiErrorReporter = (fn: (msg: string) => void) => { reportError = fn }
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const status = err?.response?.status
+    // 409 is handled inline by AddDevice (duplicate detection). Skip noise.
+    if (status !== 409) {
+      const detail = err?.response?.data?.detail
+      const msg =
+        typeof detail === 'string' ? detail :
+        detail?.message ? detail.message :
+        err?.message || 'Request failed'
+      reportError(msg)
+    }
+    return Promise.reject(err)
+  }
+)
 
 // Homes
 export const getHomes = () => api.get<Home[]>('/homes').then(r => r.data)

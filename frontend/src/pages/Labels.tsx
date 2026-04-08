@@ -22,6 +22,7 @@ export default function Labels() {
   const [templates, setTemplates] = useState<{ key: string; name: string; labels_per_sheet: number }[]>([])
   const [templateKey, setTemplateKey] = useState('custom')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
   const [generating, setGenerating] = useState(false)
 
@@ -47,16 +48,18 @@ export default function Labels() {
     if (roomFilter)     params.room_id = roomFilter
     if (protocolFilter) params.protocol = protocolFilter
     if (typeFilter)     params.device_type = typeFilter
-    getDevices(params).then(setDevices)
+    setLoading(true)
+    getDevices(params).then(setDevices).finally(() => setLoading(false))
   }, [homeFilter, roomFilter, protocolFilter, typeFilter])
 
   const withCode = devices.filter(d => d.qr_code_data || d.pairing_code)
   const withoutCode = devices.filter(d => !d.qr_code_data && !d.pairing_code)
 
-  // When the filtered device list changes, select all by default
+  // When the filtered device list changes, select all by default.
+  // Depend on `devices` (not `withCode`) because `withCode` is recomputed each render.
   useEffect(() => {
-    setSelected(new Set(withCode.map(d => d.id)))
-  }, [devices]) // eslint-disable-line react-hooks/exhaustive-deps
+    setSelected(new Set(devices.filter(d => d.qr_code_data || d.pairing_code).map(d => d.id)))
+  }, [devices])
 
   const toggleDevice = (id: string) =>
     setSelected(prev => {
@@ -207,7 +210,9 @@ export default function Labels() {
           </div>
         </div>
 
-        {withCode.length === 0 ? (
+        {loading ? (
+          <div className="py-8 text-center text-gray-400 dark:text-gray-500 text-sm">Loading…</div>
+        ) : withCode.length === 0 ? (
           <div className="py-8 text-center text-gray-400 dark:text-gray-500">
             <QrCode size={36} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No devices with pairing codes match these filters.</p>

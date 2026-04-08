@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { CheckCircle, XCircle, Info, X } from 'lucide-react'
+import { setApiErrorReporter } from '../services/api'
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -45,6 +46,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const success = useCallback((msg: string) => add(msg, 'success'), [add])
   const error   = useCallback((msg: string) => add(msg, 'error'),   [add])
   const info    = useCallback((msg: string) => add(msg, 'info'),    [add])
+
+  // Let the axios interceptor push API errors through the toast system.
+  useEffect(() => { setApiErrorReporter(error) }, [error])
 
   return (
     <Ctx.Provider value={{ success, error, info }}>
