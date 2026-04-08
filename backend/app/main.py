@@ -15,6 +15,7 @@ from .routers import homes, rooms, manufacturers, devices, scan, labels, backup,
 def _run_migrations():
     alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.db_url)
+    alembic_cfg.set_main_option("script_location", str(Path(__file__).parent.parent / "alembic"))
     command.upgrade(alembic_cfg, "head")
 
 
