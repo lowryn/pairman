@@ -5,7 +5,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -62,43 +62,22 @@ def _device_to_row(device: Device, db: Session) -> dict:
     }
 
 
-def _resolve_home(name: str, db: Session) -> str | None:
-    if not name:
+def _get_or_create(model, db: Session, **filters) -> str | None:
+    """Find a row by the given filters, or create one. Returns the id or None."""
+    if not all(filters.values()):
         return None
-    home = db.query(Home).filter(Home.name == name).first()
-    if not home:
-        home = Home(id=str(uuid.uuid4()), name=name)
-        db.add(home)
+    obj = db.query(model).filter_by(**filters).first()
+    if not obj:
+        obj = model(id=str(uuid.uuid4()), **filters)
+        db.add(obj)
         db.flush()
-    return home.id
-
-
-def _resolve_room(name: str, home_id: str | None, db: Session) -> str | None:
-    if not name or not home_id:
-        return None
-    room = db.query(Room).filter(Room.name == name, Room.home_id == home_id).first()
-    if not room:
-        room = Room(id=str(uuid.uuid4()), name=name, home_id=home_id)
-        db.add(room)
-        db.flush()
-    return room.id
-
-
-def _resolve_manufacturer(name: str, db: Session) -> str | None:
-    if not name:
-        return None
-    mfr = db.query(Manufacturer).filter(Manufacturer.name == name).first()
-    if not mfr:
-        mfr = Manufacturer(id=str(uuid.uuid4()), name=name)
-        db.add(mfr)
-        db.flush()
-    return mfr.id
+    return obj.id
 
 
 def _row_to_device(row: dict, db: Session) -> Device:
-    home_id = _resolve_home(row.get("home", ""), db)
-    room_id = _resolve_room(row.get("room", ""), home_id, db)
-    mfr_id  = _resolve_manufacturer(row.get("manufacturer", ""), db)
+    home_id = _get_or_create(Home, db, name=row.get("home", ""))
+    room_id = _get_or_create(Room, db, name=row.get("room", ""), home_id=home_id) if home_id else None
+    mfr_id  = _get_or_create(Manufacturer, db, name=row.get("manufacturer", ""))
     return Device(
         id=str(uuid.uuid4()),
         name=row.get("name", "Unnamed"),
