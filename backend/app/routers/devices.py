@@ -2,9 +2,11 @@ import csv
 import io
 import json
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import Response, StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -251,6 +253,28 @@ def create_device(body: DeviceCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(device)
     return device
+
+
+@router.get("/lookup", response_model=Optional[DeviceRead])
+def lookup_by_code(
+    pairing_code: str | None = Query(None),
+    qr_code_data: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Return the first device that matches pairing_code or qr_code_data, or null."""
+    if not pairing_code and not qr_code_data:
+        return None
+    conditions = []
+    if pairing_code:
+        conditions.append(Device.pairing_code == pairing_code)
+    if qr_code_data:
+        conditions.append(Device.qr_code_data == qr_code_data)
+    device = db.query(Device).filter(or_(*conditions)).first()
+    if not device:
+        return None
+    r = DeviceRead.model_validate(device)
+    r.tags = sorted(t.name for t in device.tags)
+    return _enrich(r, device)
 
 
 @router.get("/{device_id}", response_model=DeviceRead)

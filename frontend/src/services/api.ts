@@ -37,6 +37,8 @@ export const createDevice = (data: DeviceCreate) =>
 export const updateDevice = (id: string, data: Partial<DeviceCreate>) =>
   api.put<Device>(`/devices/${id}`, data).then(r => r.data)
 export const deleteDevice = (id: string) => api.delete(`/devices/${id}`)
+export const lookupByCode = (params: { pairing_code?: string; qr_code_data?: string }) =>
+  api.get<Device | null>('/devices/lookup', { params }).then(r => r.data)
 export const getDeviceQrUrl = (id: string) => `/api/v1/devices/${id}/qr`
 export const getDeviceLabelUrl = (id: string) => `/api/v1/devices/${id}/label`
 export const getLabelSheetUrl = (params?: Record<string, string>) => {

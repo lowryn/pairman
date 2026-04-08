@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Camera, ImageUp, Keyboard, CheckCircle } from 'lucide-react'
 import jsQR from 'jsqr'
 import Scanner from '../components/Scanner'
-import { createDevice, getHomes, getRooms, getManufacturers, decodePayload } from '../services/api'
+import { createDevice, deleteDevice, getHomes, getRooms, getManufacturers, decodePayload, lookupByCode } from '../services/api'
 import type { Home, Room, Manufacturer, DeviceCreate } from '../types'
 
 const PROTOCOLS = ['Matter', 'HomeKit', 'Z-Wave', 'Zigbee', 'WiFi', 'Bluetooth', 'Thread', 'Other']
@@ -47,6 +47,8 @@ export default function AddDevice() {
   const [showScanner, setShowScanner] = useState(false)
   const [scanBadge, setScanBadge] = useState('')
   const [imageError, setImageError] = useState('')
+  const [duplicate, setDuplicate] = useState<{ id: string; name: string } | null>(null)
+  const pendingSubmit = useRef(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -62,20 +64,29 @@ export default function AddDevice() {
   const set = (field: keyof DeviceCreate, value: string) =>
     setForm(f => ({ ...f, [field]: value || undefined }))
 
+  const checkDuplicate = async (pairing_code?: string, qr_code_data?: string) => {
+    if (!pairing_code && !qr_code_data) return
+    const existing = await lookupByCode({ pairing_code, qr_code_data }).catch(() => null)
+    if (existing) setDuplicate({ id: existing.id, name: existing.name })
+  }
+
   const applyDecodeResult = async (payload: string) => {
     setForm(f => ({ ...f, qr_code_data: payload }))
     setScanBadge('Decoding…')
     const result = await decodePayload(payload).catch(() => null)
+    let pairingCode: string | undefined
     if (result && result.protocol !== 'Unknown') {
+      pairingCode = result.pairing_code || result.passcode || undefined
       setForm(f => ({
         ...f,
         protocol: result.protocol as DeviceCreate['protocol'],
-        pairing_code: result.pairing_code || result.passcode || f.pairing_code,
+        pairing_code: pairingCode || f.pairing_code,
       }))
       setScanBadge(`Detected: ${result.protocol}`)
     } else {
       setScanBadge('Code captured')
     }
+    await checkDuplicate(pairingCode, payload)
   }
 
   const handleScanResult = (text: string) => {
@@ -113,11 +124,35 @@ export default function AddDevice() {
     if (imageInputRef.current) imageInputRef.current.value = ''
   }
 
+  const doSave = async () => {
+    const device = await createDevice(form as DeviceCreate)
+    navigate(`/devices/${device.id}`)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name || !form.home_id) return
-    const device = await createDevice(form as DeviceCreate)
-    navigate(`/devices/${device.id}`)
+    // For manual entry, check for duplicate at submit time
+    if (!pendingSubmit.current) {
+      const existing = await lookupByCode({
+        pairing_code: form.pairing_code,
+        qr_code_data: form.qr_code_data,
+      }).catch(() => null)
+      if (existing) {
+        setDuplicate({ id: existing.id, name: existing.name })
+        return
+      }
+    }
+    pendingSubmit.current = false
+    await doSave()
+  }
+
+  const handleOverwrite = async () => {
+    if (!duplicate) return
+    await deleteDevice(duplicate.id)
+    setDuplicate(null)
+    pendingSubmit.current = true
+    await doSave()
   }
 
   const inp = (f: keyof DeviceCreate, placeholder?: string, extraCls = '') => (
@@ -140,6 +175,37 @@ export default function AddDevice() {
     <>
       {showScanner && (
         <Scanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />
+      )}
+
+      {duplicate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h2 className="text-lg font-semibold dark:text-gray-100 mb-2">Duplicate pairing code</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+              <span className="font-medium text-gray-900 dark:text-gray-200">{duplicate.name}</span> already has this pairing code. What would you like to do?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleOverwrite}
+                className="w-full py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                Overwrite — delete existing and save new
+              </button>
+              <button
+                onClick={() => { setDuplicate(null); navigate(`/devices/${duplicate.id}/edit`) }}
+                className="w-full py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Edit existing device
+              </button>
+              <button
+                onClick={() => setDuplicate(null)}
+                className="w-full py-2.5 rounded-lg border dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-xl mx-auto px-4 py-6">
